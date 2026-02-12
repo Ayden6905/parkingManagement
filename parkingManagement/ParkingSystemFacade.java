@@ -12,17 +12,19 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.Date;
+import java.time.LocalDateTime;
 
 public class ParkingSystemFacade {
     private ParkingLot parkingLot;
     private FineManager fineManager;
+    private TicketService ticketService;
 
     public ParkingSystemFacade() {
         this.parkingLot = new ParkingLot(5); 
         this.fineManager = new FineManager();
+        this.ticketService = new TicketService();
     }
-
+    
     public boolean checkDatabaseConnection() {
         try (Connection conn = DatabaseConfig.getConnection()) {
             return conn != null && !conn.isClosed();
@@ -32,39 +34,67 @@ public class ParkingSystemFacade {
         }
     }
     
-    // Member 4: This is the logic that makes your button work!
     public boolean authenticateAdmin(String username, String password) {
-        String query = "SELECT * FROM admin WHERE username = ? AND password = ?";
-        
+        String query = "SELECT * FROM admins WHERE username = ? AND password = ?";
         try (Connection conn = DatabaseConfig.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(query)) {
+                PreparedStatement pstmt = conn.prepareStatement(query)) {
             
             pstmt.setString(1, username);
             pstmt.setString(2, password);
-            
+
             try (ResultSet rs = pstmt.executeQuery()) {
-                return rs.next(); // Returns true if credentials match in DB
+                return rs.next();
             }
-            
+
         } catch (SQLException e) {
             System.out.println("Login Error: " + e.getMessage());
             return false;
         }
     }
-
+    
     public String handleVehicleEntry(String plate, String type) {
-        return "Ticket Generated: T-" + plate; 
+        return "Ticket Generated: T-" + plate;
     }
-
+    
     public Receipt handleVehicleExit(String plate) {
-        int hoursParked = 2;  
+        int hoursParked = 2;
         double hourlyRate = 3.00;
-        double fine = fineManager.calculateFine("NONE"); 
+        double fine = fineManager.getOutstandingFineByPlate("NONE");
         double totalPaid = (hoursParked * hourlyRate) + fine;
-        return new Receipt(plate, hoursParked, totalPaid);
+        return ticketService.closeTicketAndPay(plate, hourlyRate, fine, "Cash");
     }
-
+    
     public void changeSystemFineScheme(String schemeName) {
         System.out.println("Switching scheme to: " + schemeName);
+    }
+    
+    public String createTicket(String plate, String spotId) {
+        return ticketService.createTicket(plate, spotId);
+    }
+    
+    public ParkingSummary getParkingSummary(String plate, double hourlyRate, double fineAmount) {
+        Ticket ticket = Ticket.findActiveByPlate(plate);
+        if (ticket == null) return null;
+        
+        double outstandingFine = fineManager.getOutstandingFineByPlate(plate);
+
+        int duration = ticket.calculateDurationHours();
+        double parkingFee = duration * hourlyRate;
+        double totalPayment = parkingFee + fineAmount;
+
+        return new ParkingSummary(
+                ticket.getTicketId(),
+                ticket.getLicensePlate(),
+                ticket.getEntryTime(),
+                LocalDateTime.now(),
+                duration,
+                parkingFee,
+                fineAmount,
+                totalPayment
+        );
+    }
+    
+    public Receipt processPayment(String plate, double hourlyRate, double fineAmount, String paymentMethod) {
+        return ticketService.closeTicketAndPay(plate, hourlyRate, fineAmount, paymentMethod);
     }
 }
