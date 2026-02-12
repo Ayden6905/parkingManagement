@@ -30,6 +30,7 @@ public class MainFrame extends JFrame {
         // 2. Add screens to the container
         mainContainer.add(homePanel, "Home");
         mainContainer.add(new EntryPanel(facade, this), "Entry"); // Member 4 task
+        mainContainer.add(new ExitPanel(facade, this), "Exit");
         // mainContainer.add(new ExitPanel(facade, this), "Exit"); 
         // Change "Admin" to "AdminDashboard"
         mainContainer.add(new AdminPanel(facade, this), "AdminDashboard");
@@ -61,6 +62,7 @@ public class MainFrame extends JFrame {
         // Navigation logic
         btnEntry.addActionListener(e -> cardLayout.show(mainContainer, "Entry"));
         btnAdmin.addActionListener(e -> showPanel("AdminLogin"));
+        btnExit.addActionListener(e -> cardLayout.show(mainContainer, "Exit"));
         // Add listeners for Exit and Admin later
 
         return panel;

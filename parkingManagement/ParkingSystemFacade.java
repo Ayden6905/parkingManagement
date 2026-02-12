@@ -72,15 +72,15 @@ public class ParkingSystemFacade {
         return ticketService.createTicket(plate, spotId);
     }
     
-    public ParkingSummary getParkingSummary(String plate, double hourlyRate, double fineAmount) {
+    public ParkingSummary getParkingSummary(String plate, double hourlyRate) {
         Ticket ticket = Ticket.findActiveByPlate(plate);
         if (ticket == null) return null;
         
-        double outstandingFine = fineManager.getOutstandingFineByPlate(plate);
-
+        double fineOwed = fineManager.getOutstandingFineByPlate(plate);        
+        
         int duration = ticket.calculateDurationHours();
         double parkingFee = duration * hourlyRate;
-        double totalPayment = parkingFee + fineAmount;
+        double totalPayment = parkingFee + fineOwed;
 
         return new ParkingSummary(
                 ticket.getTicketId(),
@@ -89,12 +89,12 @@ public class ParkingSystemFacade {
                 LocalDateTime.now(),
                 duration,
                 parkingFee,
-                fineAmount,
+                fineOwed,
                 totalPayment
         );
     }
     
-    public Receipt processPayment(String plate, double hourlyRate, double fineAmount, String paymentMethod) {
-        return ticketService.closeTicketAndPay(plate, hourlyRate, fineAmount, paymentMethod);
+    public Receipt processPayment(String plate, double hourlyRate, double fineToPay, String method) {
+        return ticketService.closeTicketAndPay(plate, hourlyRate, fineToPay, method);
     }
 }
