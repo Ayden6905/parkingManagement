@@ -8,14 +8,21 @@ package parkingManagement;
  *
  * @author HP
  */
+
+import java.time.LocalDateTime;
+
 public abstract class Vehicle {
-    protected String licensePlate;
-    protected VehicleType vehicleType;
+    private String licensePlate;
+    private VehicleType vehicleType;
+    private LocalDateTime entryTime;
+    private LocalDateTime exitTime; //null if still in parking
     
-    public Vehicle(String licensePlate, VehicleType vehicleType)
+    protected Vehicle(String licensePlate, VehicleType vehicleType)
     {
         this.licensePlate = licensePlate;
         this.vehicleType= vehicleType;
+        this.entryTime = LocalDateTime.now();
+        this.exitTime = null;
     }
     
     public String getLicensePlate()
@@ -26,5 +33,15 @@ public abstract class Vehicle {
     public VehicleType getVehicleType()
     {
         return vehicleType;
+    }
+    
+    public LocalDateTime getEntryTime()
+    {
+        return entryTime;
+    }
+    
+    public void setExitTime(LocalDateTime exitTime)
+    {
+        this.exitTime = exitTime;
     }
 }

@@ -61,5 +61,15 @@ public abstract class ParkingSpot {
         return spotType;
     }
     
+    public int getFloorNumber()
+    {
+        return floorNumber;
+    }
+    
+    public Vehicle getCurrentVehicle()
+    {
+        return currentVehicle;
+    }
+    
     protected abstract boolean canParkVehicle(Vehicle v);
 }
