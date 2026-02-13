@@ -2,7 +2,6 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
-package parkingManagement;
 
 /**
  *
@@ -52,17 +51,17 @@ public class ParkingSystemFacade {
         }
     }
     
-    public String handleVehicleEntry(String plate, String type, String chosenSpot) {
+    public String handleVehicleEntry(String plate, String vehicleType, String spotId) {
         if (Ticket.findActiveByPlate(plate) != null) {
             return "Error: Vehice with plate" + plate + " is already inside the parking lot.";
         }
         
-        ticketService.createTicket(plate, chosenSpot);
+        ticketService.createTicket(plate, vehicleType, spotId);
 
         Ticket ticket = Ticket.findActiveByPlate(plate);
 
         if (ticket != null) {
-            return ticket.generateFormattedTicket(type);
+            return ticket.generateFormattedTicket(vehicleType);
         }
 
         return "Error: Failed to generate ticket record.";
@@ -80,8 +79,8 @@ public class ParkingSystemFacade {
         System.out.println("Switching scheme to: " + schemeName);
     }
     
-    public String createTicket(String plate, String spotId) {
-        return ticketService.createTicket(plate, spotId);
+    public String createTicket(String plate, String vehicleType, String spotId) {
+        return ticketService.createTicket(plate, vehicleType, spotId);
     }
     
     public ParkingSummary getParkingSummary(String plate, double hourlyRate) {
@@ -127,6 +126,7 @@ public class ParkingSystemFacade {
     }    
     
     public Receipt processPayment(String plate, double hourlyRate, double fineToPay, String method) {
+                System.out.println("Saving receipt to database...");
         return ticketService.closeTicketAndPay(plate, hourlyRate, fineToPay, method);
     }
 }

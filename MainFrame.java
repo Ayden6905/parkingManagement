@@ -2,7 +2,6 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
-package parkingManagement;
 
 /**
  *
@@ -16,6 +15,9 @@ public class MainFrame extends JFrame {
     private CardLayout cardLayout = new CardLayout();
     private JPanel mainContainer = new JPanel(cardLayout);
     private ParkingSystemFacade facade = new ParkingSystemFacade();
+    
+    private EntryPanel entryPanel;
+    private ExitPanel exitPanel;
   
 
     public MainFrame() {
@@ -26,6 +28,9 @@ public class MainFrame extends JFrame {
 
         // 1. Create the Main Menu (the screen in your image)
         JPanel homePanel = createHomePanel();
+        
+        entryPanel = new EntryPanel(facade, this);
+        exitPanel = new ExitPanel(facade, this);
         
         // 2. Add screens to the container
         mainContainer.add(homePanel, "Home");
@@ -48,7 +53,8 @@ public class MainFrame extends JFrame {
 
         JLabel title = new JLabel("Parking Management System");
         title.setFont(new Font("SansSerif", Font.BOLD, 24));
-        gbc.gridy = 0; panel.add(title, gbc);
+        gbc.gridy = 0; 
+        panel.add(title, gbc);
 
         // Buttons based on your image
         JButton btnEntry = createMenuButton("Entry System");
@@ -62,7 +68,10 @@ public class MainFrame extends JFrame {
         // Navigation logic
         btnEntry.addActionListener(e -> cardLayout.show(mainContainer, "Entry"));
         btnAdmin.addActionListener(e -> showPanel("AdminLogin"));
-        btnExit.addActionListener(e -> cardLayout.show(mainContainer, "Exit"));
+        btnExit.addActionListener(e -> {
+            exitPanel.reset();
+            cardLayout.show(mainContainer, "Exit");
+                });
         // Add listeners for Exit and Admin later
 
         return panel;

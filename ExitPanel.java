@@ -2,7 +2,6 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
-package parkingManagement;
 
 /**
  *
@@ -105,10 +104,25 @@ public class ExitPanel extends JPanel {
         JPanel p = new JPanel(new BorderLayout());
         p.add(new JScrollPane(area), BorderLayout.CENTER);
         JButton btnHome = new JButton("Finish & Return Home");
-        btnHome.addActionListener(e -> mainFrame.showHome());
+        btnHome.addActionListener(e -> {
+            reset();
+            mainFrame.showHome();
+                });
         p.add(btnHome, BorderLayout.SOUTH);
 
         container.add(p, "Receipt");
         innerLayout.show(container, "Receipt");
     } 
+    
+    public void reset() {
+        currentSummary = null;
+        container.removeAll();
+        
+        //to recreate search panel jadi default view
+        container.add(createSearchPanel(), "Search");
+        innerLayout.show(container, "Search");
+        revalidate();
+        repaint();
+               
+    }
 }

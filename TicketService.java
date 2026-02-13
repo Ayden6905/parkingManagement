@@ -2,7 +2,6 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
-package parkingManagement;
 
 /**
  *
@@ -21,7 +20,20 @@ public class TicketService {
         this.paymentService = new PaymentService();
     }
     
-    public String createTicket(String plate, String spotId) {
+    public String createTicket(String plate, String vehicleType, String spotId) {
+        String vehicleSQL = "INSERT IGNORE INTO vehicle (licensePlate, vehicleType) VALUES (?, ?)";
+
+        try (Connection conn = DatabaseConfig.getConnection();
+             PreparedStatement ps = conn.prepareStatement(vehicleSQL)) {
+
+            ps.setString(1, plate);
+            ps.setString(2, "Car");
+            ps.executeUpdate();
+
+        } catch (SQLException e) {
+            System.out.println("Vehicle insert error: " + e.getMessage());
+        }
+        
         String ticketId = "T-" + plate + "-" + System.currentTimeMillis();
         Ticket ticket = new Ticket(ticketId, plate, spotId, LocalDateTime.now());
         ticket.saveEntry();
