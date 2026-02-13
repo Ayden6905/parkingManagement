@@ -5,8 +5,11 @@
 
 /**
  *
- * @author ayden
+ * @author HP
  */
 public enum VehicleType {
-    MOTORCYCLE, CAR, SUV, HANDICAPPED
+    MOTORCYCLE,
+    CAR,
+    SUV,
+    HANDICAPPED
 }

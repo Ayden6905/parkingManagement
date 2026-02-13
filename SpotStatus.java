@@ -6,16 +6,10 @@
 
 /**
  *
- * @author ayden
+ * @author HP
  */
-<<<<<<<< HEAD:SpotStatus.java
 // for spot availability
 public enum SpotStatus {
     AVAILABLE,
     OCCUPIED
-========
-public interface FineStrategy {
-    // Calculates fine based on TOTAL hours parked
-    double calculateFine(long totalHours);
->>>>>>>> ayden2:FineStrategy.java
 }

@@ -2,83 +2,93 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
-package parkingManagement;
 
+/**
+ *
+ * @author NurqistinaAtashah
+ */
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
+import java.util.List;
 
-
- // MEMBER 4 UI + MEMBER 2 LOGIC CONNECTION 
 public class EntryPanel extends JPanel {
-    private MainFrame mainFrame; 
-    private ParkingSystemFacade facade; // The bridge to logic
+    private MainFrame mainFrame; // To allow going back to home
+    private ParkingSystemFacade facade;
+    
+    private JTextField plateField;
+    private JComboBox<?> typeCombo;
 
     public EntryPanel(ParkingSystemFacade facade, MainFrame mainFrame) {
         this.facade = facade;
         this.mainFrame = mainFrame;
         
         setLayout(new GridBagLayout());
-        setBackground(Color.WHITE);
+        setBackground(Color.WHITE); // Matching your UI style
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(10, 10, 10, 10);
 
-        //1. UI Components
+        // UI Components
         JLabel title = new JLabel("Vehicle Entry System");
         title.setFont(new Font("SansSerif", Font.BOLD, 20));
         
-        JLabel lblPlate = new JLabel("License Plate:");
         JTextField plateField = new JTextField(15);
-        
-        JLabel lblType = new JLabel("Vehicle Type:");
-        // Matches your Enum strings exactly
-        String[] types = {"Car", "Motorcycle", "SUV", "Handicapped"}; 
+        String[] types = {"Car", "Motorcycle", "SUV", "Handicapped"};
         JComboBox<String> typeCombo = new JComboBox<>(types);
         
         JButton btnPark = new JButton("Assign Spot & Park");
         JButton btnBack = new JButton("Back to Main Menu");
 
-        // --- 2. Layout (Positioning) ---
-        gbc.gridx = 0; gbc.gridy = 0; gbc.gridwidth = 2; 
-        add(title, gbc);
+        // Layout the components
+        gbc.gridx = 0; gbc.gridy = 0; gbc.gridwidth = 2; add(title, gbc);
         
-        gbc.gridwidth = 1; 
-        gbc.gridy = 1; gbc.gridx = 0; add(lblPlate, gbc);
+        gbc.gridwidth = 1; gbc.gridy = 1; add(new JLabel("License Plate:"), gbc);
         gbc.gridx = 1; add(plateField, gbc);
         
-        gbc.gridy = 2; gbc.gridx = 0; add(lblType, gbc);
+        gbc.gridx = 0; gbc.gridy = 2; add(new JLabel("Vehicle Type:"), gbc);
         gbc.gridx = 1; add(typeCombo, gbc);
         
-        gbc.gridy = 3; gbc.gridx = 0; gbc.gridwidth = 2; 
-        add(btnPark, gbc);
+        gbc.gridx = 0; gbc.gridy = 3; gbc.gridwidth = 2; add(btnPark, gbc);
+        gbc.gridy = 4; add(btnBack, gbc);
         
-        gbc.gridy = 4; 
-        add(btnBack, gbc);
+        btnPark.addActionListener(e -> {
+            String plate = plateField.getText().trim().toUpperCase();
+            String type = (String) typeCombo.getSelectedItem();
 
-        //Button Actions 
-        // BACK BUTTON
-        btnBack.addActionListener(e -> mainFrame.showHome());
+            if (plate.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Please enter license plate.");
+                return;
+            }
 
-        // PARK BUTTON (Critical)
-        btnPark.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                // Get Input from UI
-                String plate = plateField.getText();
-                String type = (String) typeCombo.getSelectedItem();
-                
-                // Call Facade (Member 2 Logic)
-                String result = facade.handleVehicleEntry(plate, type);
-                
-                // Show Result to User
-                JOptionPane.showMessageDialog(EntryPanel.this, result);
-                
-                // Clear text field if successful
-                if (result.startsWith("Success")) {
-                    plateField.setText("");
-                }
+            List<String> spots = facade.getAvailableSpots();
+
+            if (spots.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "No available spots.");
+                return;
+            }
+
+            String selectedSpot = (String) JOptionPane.showInputDialog(
+                    this,
+                    "Select Available Spot:",
+                    "Choose Spot",
+                    JOptionPane.PLAIN_MESSAGE,
+                    null,
+                    spots.toArray(),
+                    spots.get(0)
+            );
+
+            if (selectedSpot != null) {
+                String ticketResult = facade.handleVehicleEntry(plate, type, selectedSpot);
+
+                JTextArea textArea = new JTextArea(ticketResult);
+                JOptionPane.showMessageDialog(this,
+                        new JScrollPane(textArea),
+                        "Ticket Issued",
+                        JOptionPane.PLAIN_MESSAGE);
             }
         });
+
+
+        // Navigation back to your Main Screen
+        btnBack.addActionListener(e -> mainFrame.showHome());
     }
 }
