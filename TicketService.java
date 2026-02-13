@@ -11,6 +11,9 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
 
 public class TicketService {
     
@@ -106,5 +109,39 @@ public class TicketService {
                 totalPaid,
                 paymentMethod
         );
+    }
+    
+    public List<RevenueRecord> getRevenueReport() {
+        
+        List<RevenueRecord> records = new ArrayList<>();
+        
+        String sql = """
+            SELECT t.licensePlate, t.entryTime, t.exitTime,
+                           t.totalPaid, t.paymentMethod, r.issuedTime
+                    FROM ticket t
+                    JOIN receipt r ON t.ticketId = r.ticketId
+                    ORDER BY r.issuedTime DESC
+        """;
+            
+        try (Connection conn = DatabaseConfig.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            
+            while (rs.next()) {
+                records.add(new RevenueRecord(
+                        rs.getString("licensePlate"),
+                        rs.getTimestamp("entryTime").toLocalDateTime(),
+                        rs.getTimestamp("exitTime").toLocalDateTime(),
+                        rs.getDouble("totalPaid"),
+                        rs.getString("paymentMethod"),
+                        rs.getTimestamp("issuedTime").toLocalDateTime()
+                ));
+            }
+            
+        } catch (SQLException e) {
+            System.out.println("Revenue report error: " + e.getMessage());
+        }
+            
+        return records;                    
     }
 }

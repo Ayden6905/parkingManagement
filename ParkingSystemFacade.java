@@ -12,6 +12,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
+import java.util.List;
 
 public class ParkingSystemFacade {
     private ParkingLot parkingLot;
@@ -34,7 +35,7 @@ public class ParkingSystemFacade {
     }
     
     public boolean authenticateAdmin(String username, String password) {
-        String query = "SELECT * FROM admins WHERE username = ? AND password = ?";
+        String query = "SELECT * FROM admin WHERE username = ? AND password = ?";
         try (Connection conn = DatabaseConfig.getConnection();
                 PreparedStatement pstmt = conn.prepareStatement(query)) {
             
@@ -128,5 +129,9 @@ public class ParkingSystemFacade {
     public Receipt processPayment(String plate, double hourlyRate, double fineToPay, String method) {
                 System.out.println("Saving receipt to database...");
         return ticketService.closeTicketAndPay(plate, hourlyRate, fineToPay, method);
+    }
+    
+    public List<RevenueRecord> getRevenueReport() {
+        return ticketService.getRevenueReport();
     }
 }
