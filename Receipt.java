@@ -11,43 +11,54 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
 public class Receipt {
-    private String ticketId;
-    private String plate;
-    private LocalDateTime entryTime;
-    private LocalDateTime exitTime;
-    private int hours;
+    private int receiptId;
+    private Ticket ticket;
     private double parkingFee;
     private double fineAmount;
     private double totalPaid;
-    private String paymentMethod;
+    private LocalDateTime issuedTime;
 
-    public Receipt(String ticketId, String plate, LocalDateTime entryTime,
-            LocalDateTime exitTime, int hours, double parkingFee, double fineAmount,
-            double totalPaid, String paymentMethod) {
-        this.ticketId = ticketId;
-        this.plate = plate;
-        this.entryTime = entryTime;
-        this.exitTime = exitTime;
-        this.hours = hours;
+    public Receipt(int receiptId, Ticket ticket, double parkingFee,
+                   double fineAmount, double totalPaid, LocalDateTime issuedTime) {
+        this.receiptId = receiptId;
+        this.ticket = ticket;
         this.parkingFee = parkingFee;
         this.fineAmount = fineAmount;
         this.totalPaid = totalPaid;
-        this.paymentMethod = paymentMethod;
+        this.issuedTime = issuedTime;
     }
     
-    @Override
-    public String toString() {
-        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm:ss");
-        
-        return "--- PARKING RECEIPT ---\n" +
-               "Ticket ID: " + ticketId + "\n" +
-               "Plate: " + plate + "\n" +
-               "Entry Time: " + entryTime.format(fmt) + "\n" +
-               "Exit Time: " + exitTime.format(fmt) + "\n" +
-               "Duration: " + hours + " hour(s)\n" +
-               "Parking Fee: RM " + String.format("%.2f", parkingFee) + "\n" +
-               "Fine: RM " + String.format("%.2f", fineAmount) + "\n" +
-               "Total Paid: RM " + String.format("%.2f", totalPaid) + "\n" +
-               "Payment Method: " + paymentMethod;
+    public Receipt(Ticket ticket, double parkingFee,
+                   double fineAmount, double totalPaid) {
+        this.ticket = ticket;
+        this.parkingFee = parkingFee;
+        this.fineAmount = fineAmount;
+        this.totalPaid = totalPaid;
+        this.issuedTime = LocalDateTime.now();
     }
+    
+    public void generateReceipt() {
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm:ss");
+
+        System.out.println("--- PARKING RECEIPT ---");
+        System.out.println("Receipt ID: " + receiptId);
+        System.out.println("Ticket ID: " + ticket.getTicketId());
+        System.out.println("Plate: " + ticket.getLicensePlate().getLicensePlate());
+        System.out.println("Entry Time: " + ticket.getEntryTime().format(fmt));
+        System.out.println("Exit Time: " + (ticket.getExitTime() != null ? ticket.getExitTime().format(fmt) : "-"));
+        System.out.println("Duration: " + ticket.getTotalHours() + " hour(s)");
+        System.out.println("Parking Fee: RM " + String.format("%.2f", parkingFee));
+        System.out.println("Fine: RM " + String.format("%.2f", fineAmount));
+        System.out.println("Total Paid: RM " + String.format("%.2f", totalPaid));
+        System.out.println("Issued Time: " + issuedTime.format(fmt));
+        System.out.println("Payment Method: " + ticket.getPaymentMethod());
+        System.out.println("-------------------------");
+    }
+    
+    public int getReceiptId() { return receiptId; }
+    public Ticket getTicket() { return ticket; }
+    public double getParkingFee() { return parkingFee; }
+    public double getFineAmount() { return fineAmount; }
+    public double getTotalPaid() { return totalPaid; }
+    public LocalDateTime getIssuedTime() { return issuedTime; }
 }
