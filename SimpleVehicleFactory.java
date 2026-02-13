@@ -8,6 +8,8 @@ package parkingmanagement;
  *
  * @author ayden
  */
+
+// This class creates obj of vehicles
 public class SimpleVehicleFactory {
     
     // Static method to create the correct subclass based on a string input
