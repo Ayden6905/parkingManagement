@@ -61,7 +61,7 @@ public class ParkingSystemFacade {
         Ticket ticket = Ticket.findActiveByPlate(plate);
 
         if (ticket != null) {
-            return ticket.generateFormattedTicket(vehicleType);
+            return ticket.generateFormattedTicket();
         }
 
         return "Error: Failed to generate ticket record.";

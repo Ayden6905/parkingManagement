@@ -146,20 +146,20 @@ public class Ticket {
         return null;
     }
     
-    public String generateFormattedTicket(String vehicleType) {
-        java.time.format.DateTimeFormatter timeFmt = java.time.format.DateTimeFormatter.ofPattern("h:mm a");
+    public String generateFormattedTicket() {
+        DateTimeFormatter timeFmt = DateTimeFormatter.ofPattern("h:mm a");
         
         long timestamp = System.currentTimeMillis();
         String headerId = "T-" + this.licensePlate + "-" + timestamp;
         
-        String level = "L3"; //dummy for now
+        String level = (spotId != null && spotId.contains("-"))
+                ? spotId.split("-")[0] : "N/A";
         
         return "==========================================\n" +
-               "          " + headerId + "\n" +
-               "     ex: " + vehicleType.toLowerCase() + "-" + this.licensePlate + "-1410\n" +
+               "          " + headerId + "\n" +             
                "==========================================\n\n" +
                "   Entry Time:     " + this.entryTime.format(timeFmt) + "\n" +
-               "   Vehicle Type:   " + vehicleType + "\n" +
+               //"   Vehicle Type:   " + vehicleType + "\n" +
                "   Plate Number:   " + this.licensePlate + "\n" +
                "   Assigned Level: " + level + "\n" +
                "   Assigned Spot:  " + this.spotId + "\n\n" +

@@ -151,17 +151,19 @@ public class ParkingLot {
         
         s.parkVehicle(v);
         
-        //stub
-        return new Ticket(v, s);
+        return new Ticket(
+                "T-" + v.getLicensePlate() + "-" + System.currentTimeMillis(),
+                v.getLicensePlate(),
+                s.getSpotId(),
+                LocalDateTime.now()
+        );
     }
     
     public Receipt exitVehicle(String licensePlate) 
     {
-        // stub values for now (testing only)
-        int hours = 0;
-        double total = 0.0;
-
-        return new Receipt(licensePlate, hours, total);
+        // stub values (testing only)
+        return new Receipt("TEMP-TICKET", licensePlate, LocalDateTime.now().minusHours(1),
+        LocalDateTime.now(), 1, 0.0, 0.0, 0.0, "N/A");
     }
     
     public double calculateOccupancy()
