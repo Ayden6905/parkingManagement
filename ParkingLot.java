@@ -153,17 +153,40 @@ public class ParkingLot {
         
         return new Ticket(
                 "T-" + v.getLicensePlate() + "-" + System.currentTimeMillis(),
-                v.getLicensePlate(),
-                s.getSpotId(),
-                LocalDateTime.now()
+                v, s, LocalDateTime.now()
         );
     }
     
     public Receipt exitVehicle(String licensePlate) 
     {
-        // stub values (testing only)
-        return new Receipt("TEMP-TICKET", licensePlate, LocalDateTime.now().minusHours(1),
-        LocalDateTime.now(), 1, 0.0, 0.0, 0.0, "N/A");
+        // find the ticket
+        Ticket t = Ticket.findActiveByPlate(licensePlate);
+        
+        if (t == null) { return null; }
+        
+        //stub for now
+        LocalDateTime exitTime = LocalDateTime.now();
+        double parkingFee = 0.0;
+        double fineAmount = 0.0;
+        double totalPaid = 0.0;
+        String paymentMethod = "N/A";
+        
+        t.closeTicket(exitTime, parkingFee, fineAmount, totalPaid, paymentMethod);
+        
+        //create receipt
+        return new Receipt (t, parkingFee, fineAmount, totalPaid);
+    }
+    
+    public ParkingSpot findSpotById(String spotId)
+    {
+        for (Floor f : floors)
+        {
+            for (ParkingSpot s : f.getAllSpots())
+            {
+                if (s.getSpotId().equals(spotId)) return s;
+            }
+        }
+        return null;
     }
     
     public double calculateOccupancy()

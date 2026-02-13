@@ -25,19 +25,19 @@ public class Ticket {
    
     
     public Ticket(String ticketId, Vehicle licensePlate, ParkingSpot spotId, 
-            LocalDateTime entryTime, LocalDateTime exitTime,
-            double parkingFee, double fineAmount, double totalPaid,
-            String paymentMethod) {
+            LocalDateTime entryTime) {
         this.ticketId = ticketId;
         this.licensePlate = licensePlate;
         this.spotId = spotId;
         this.entryTime = entryTime;
-        this.exitTime = exitTime;
-        this.parkingFee = parkingFee;
-        this.fineAmount = fineAmount;
-        this.totalPaid = totalPaid;
-        this.paymentMethod = paymentMethod;
-        this.totalHours = calculateDurationHours();
+        
+        //default value used for entry ticket
+        this.exitTime = null;
+        this.parkingFee = 0.0;
+        this.fineAmount = 0.0;
+        this.totalPaid = 0.0;
+        this.paymentMethod = "N/A";
+        this.totalHours = 0;
     }
     
     public String generateTicketId() {
@@ -109,6 +109,55 @@ public class Ticket {
         } catch (SQLException e) {
             System.out.println("DB Error (closeTicket): " + e.getMessage());
         }
+    }
+    
+    public String generateFormattedTicket() {
+        java.time.format.DateTimeFormatter timeFmt = java.time.format.DateTimeFormatter.ofPattern("h:mm a");
+
+        String plateStr = (licensePlate != null) ? licensePlate.getLicensePlate() : "N/A";
+        String spotStr = (spotId != null) ? spotId.getSpotId() : "N/A";
+        String level = (spotStr.contains("-")) ? spotStr.split("-")[0] : "N/A"; // F1 from F1-R1-S1
+
+        return "==========================================\n"
+                + "          " + ticketId + "\n"
+                + "==========================================\n\n"
+                + "   Entry Time:     " + entryTime.format(timeFmt) + "\n"
+                + "   Plate Number:   " + plateStr + "\n"
+                + "   Assigned Level: " + level + "\n"
+                + "   Assigned Spot:  " + spotStr + "\n\n"
+                + "==========================================";
+    }
+    
+    public static Ticket findActiveByPlate(String plate)
+    {
+        String sql = "SELECT ticketId, licensePlate, spotId, entryTime "
+                + "FROM ticket WHERE licensePlate=? AND exitTime IS NULL";
+
+        try (Connection conn = DatabaseConfig.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, plate);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+
+                    // stub for now
+                    Vehicle v = new Car(rs.getString("licensePlate")); // or your Vehicle base constructor
+                    ParkingSpot s = new RegularSpot(rs.getString("spotId"), 1); // placeholder floor
+
+                    return new Ticket(
+                            rs.getString("ticketId"),
+                            v,
+                            s,
+                            rs.getTimestamp("entryTime").toLocalDateTime()
+                    );
+                }
+            }
+
+        } catch (SQLException e) {
+            System.out.println("Error finding active ticket: " + e.getMessage());
+        }
+
+        return null;
     }
     
     public String getTicketId() { return ticketId; }

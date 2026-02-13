@@ -96,7 +96,7 @@ public class ParkingSystemFacade {
 
         return new ParkingSummary(
                 ticket.getTicketId(),
-                ticket.getLicensePlate(),
+                ticket.getLicensePlate().getLicensePlate(),
                 ticket.getEntryTime(),
                 LocalDateTime.now(),
                 duration,
