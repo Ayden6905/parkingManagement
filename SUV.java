@@ -6,11 +6,15 @@ package parkingmanagement;
 
 /**
  *
- * @author NurqistinaAtashah
+ * @author ayden
  */
-public class ParkingLot {
-    // Stub class so Member 4 can continue integration
-    public ParkingLot(int floors) {
-        System.out.println("ParkingLot initialized with " + floors + " floors.");
+public class SUV extends Vehicle {
+    public SUV(String licensePlate) {
+        super(licensePlate);
+    }
+
+    @Override
+    public VehicleType getVehicleType() {
+        return VehicleType.SUV;
     }
 }
