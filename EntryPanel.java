@@ -2,19 +2,19 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
-package com.mycompany.parkingmanagement;
-
-import javax.swing.*;
-import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
+package parkingManagement;
 
 /**
- * MEMBER 4's UI + MEMBER 2's LOGIC CONNECTION
+ *
+ * @author NurqistinaAtashah
  */
+import javax.swing.*;
+import java.awt.*;
+import java.util.List;
+
 public class EntryPanel extends JPanel {
-    private MainFrame mainFrame; 
-    private ParkingSystemFacade facade; // The bridge to your logic
+    private MainFrame mainFrame; // To allow going back to home
+    private ParkingSystemFacade facade;
 
     public EntryPanel(ParkingSystemFacade facade, MainFrame mainFrame) {
         this.facade = facade;
@@ -61,26 +61,47 @@ public class EntryPanel extends JPanel {
         
         // BACK BUTTON
         btnBack.addActionListener(e -> mainFrame.showHome());
+       
+        
+          btnPark.addActionListener(e -> {
+            String plate = plateField.getText().trim().toUpperCase();
+            String type = (String) typeCombo.getSelectedItem();
 
-        // PARK BUTTON ( The Critical Part )
-        btnPark.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                // Get Input from UI
-                String plate = plateField.getText();
-                String type = (String) typeCombo.getSelectedItem();
-                
-                // Call Facade (Member 2's Logic)
-                String result = facade.handleVehicleEntry(plate, type);
-                
-                // Show Result to User
-                JOptionPane.showMessageDialog(EntryPanel.this, result);
-                
-                // Clear text field if successful
-                if (result.startsWith("Success")) {
-                    plateField.setText("");
-                }
+            if (plate.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Please enter license plate.");
+                return;
+            }
+
+            List<String> spots = facade.getAvailableSpots();
+
+            if (spots.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "No available spots.");
+                return;
+            }
+
+            String selectedSpot = (String) JOptionPane.showInputDialog(
+                    this,
+                    "Select Available Spot:",
+                    "Choose Spot",
+                    JOptionPane.PLAIN_MESSAGE,
+                    null,
+                    spots.toArray(),
+                    spots.get(0)
+            );
+
+            if (selectedSpot != null) {
+                String ticketResult = facade.handleVehicleEntry(plate, type, selectedSpot);
+
+                JTextArea textArea = new JTextArea(ticketResult);
+                JOptionPane.showMessageDialog(this,
+                        new JScrollPane(textArea),
+                        "Ticket Issued",
+                        JOptionPane.PLAIN_MESSAGE);
             }
         });
+
+
+        // Navigation back to your Main Screen
+        btnBack.addActionListener(e -> mainFrame.showHome());
     }
 }
