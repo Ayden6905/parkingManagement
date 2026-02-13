@@ -7,10 +7,10 @@
  *
  * @author User
  */
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
 import java.time.LocalDateTime;
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
 
 public class TicketService {
     
@@ -21,32 +21,29 @@ public class TicketService {
     }
     
     public String createTicket(String plate, String vehicleType, String spotId) {
-        String vehicleSQL = "INSERT IGNORE INTO vehicle (licensePlate, vehicleType) VALUES (?, ?)";
-
-        try (Connection conn = DatabaseConfig.getConnection();
-             PreparedStatement ps = conn.prepareStatement(vehicleSQL)) {
-
-            ps.setString(1, plate);
-            ps.setString(2, "Car");
-            ps.executeUpdate();
-
-        } catch (SQLException e) {
-            System.out.println("Vehicle insert error: " + e.getMessage());
+        Vehicle vehicle;
+        
+        switch (vehicleType) {
+            case "Car": vehicle = new Car(plate); break;
+            case "Motorcycle": vehicle = new Motorcycle(plate); break;
+            case "SUV": vehicle = new SUV(plate); break;
+            case "Handicapped": vehicle = new HandicappedVehicle(plate); break;
+            default: throw new RuntimeException("Unknown vehicle type: " + vehicleType);
         }
         
+        ParkingSpot spot = new ParkingSpotFactory().createSpot(spotId); 
+
         String ticketId = "T-" + plate + "-" + System.currentTimeMillis();
-        Ticket ticket = new Ticket(ticketId, plate, spotId, LocalDateTime.now());
+        Ticket ticket = new Ticket(ticketId, vehicle, spot, LocalDateTime.now());
         ticket.saveEntry();
+
         return ticketId;
     }
     
     public Receipt closeTicketAndPay(String plate, double hourlyRate,
-                                      double fineToPay, String paymentMethod) {
-
+                                     double fineToPay, String paymentMethod) {
         Ticket ticket = Ticket.findActiveByPlate(plate);
-        if (ticket == null) {
-            return null;
-        }
+        if (ticket == null) return null;
 
         LocalDateTime exitTime = LocalDateTime.now();
         int hours = ticket.calculateDurationHours();
@@ -56,7 +53,6 @@ public class TicketService {
         ticket.closeTicket(exitTime, parkingFee, fineToPay, totalPaid, paymentMethod);
         
         String paymentSQL = "INSERT INTO payment (ticketId, amount, paymentMethod) VALUES (?, ?, ?)";
-
         try (Connection conn = DatabaseConfig.getConnection();
              PreparedStatement ps = conn.prepareStatement(paymentSQL)) {
 
@@ -68,9 +64,18 @@ public class TicketService {
         } catch (SQLException e) {
             System.out.println("Payment insert error: " + e.getMessage());
         }
+        try (Connection conn = DatabaseConfig.getConnection();
+             PreparedStatement ps = conn.prepareStatement(vehicleSQL)) {
+
+            ps.setString(1, plate);
+            ps.setString(2, "Car");
+            ps.executeUpdate();
+
+        } catch (SQLException e) {
+            System.out.println("Vehicle insert error: " + e.getMessage());
+        }
         
         String receiptSQL = "INSERT INTO receipt (ticketId, parkingFee, fineAmount, totalPaid) VALUES (?, ?, ?, ?)";
-
         try (Connection conn = DatabaseConfig.getConnection();
              PreparedStatement ps = conn.prepareStatement(receiptSQL)) {
 
@@ -84,11 +89,11 @@ public class TicketService {
             System.out.println("Receipt insert error: " + e.getMessage());
         }
         
-         String freeSpotSQL = "UPDATE parkingSpot SET status='Available' WHERE spotId=?";
-         try (Connection conn = DatabaseConfig.getConnection();
-              PreparedStatement ps = conn.prepareStatement(freeSpotSQL)) {
+        String freeSpotSQL = "UPDATE parkingSpot SET status='Available' WHERE spotId=?";
+        try (Connection conn = DatabaseConfig.getConnection();
+             PreparedStatement ps = conn.prepareStatement(freeSpotSQL)) {
 
-            ps.setString(1, ticket.getSpotId());
+            ps.setString(1, ticket.getSpotId().getSpotId());
             ps.executeUpdate();
 
         } catch (SQLException e) {
@@ -106,5 +111,37 @@ public class TicketService {
                 totalPaid,
                 paymentMethod
         );
+    }
+    
+    public List<RevenueRecord> getRevenueReport() {
+        List<RevenueRecord> records = new ArrayList<>();
+        String sql = """
+                SELECT t.licensePlate, t.entryTime, t.exitTime,
+                       t.totalPaid, t.paymentMethod, r.issuedTime
+                FROM ticket t
+                JOIN receipt r ON t.ticketId = r.ticketId
+                ORDER BY r.issuedTime DESC
+                """;
+
+        try (Connection conn = DatabaseConfig.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+
+            while (rs.next()) {
+                records.add(new RevenueRecord(
+                        rs.getString("licensePlate"),
+                        rs.getTimestamp("entryTime").toLocalDateTime(),
+                        rs.getTimestamp("exitTime").toLocalDateTime(),
+                        rs.getDouble("totalPaid"),
+                        rs.getString("paymentMethod"),
+                        rs.getTimestamp("issuedTime").toLocalDateTime()
+                ));
+            }
+
+        } catch (SQLException e) {
+            System.out.println("Revenue report error: " + e.getMessage());
+        }
+
+        return records;
     }
 }
