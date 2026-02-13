@@ -23,7 +23,7 @@ public class Receipt {
     private String paymentMethod;
 
     public Receipt(String ticketId, String plate, LocalDateTime entryTime,
-            int hours, double parkingFee, double fineAmount,
+            LocalDateTime exitTime, int hours, double parkingFee, double fineAmount,
             double totalPaid, String paymentMethod) {
         this.ticketId = ticketId;
         this.plate = plate;

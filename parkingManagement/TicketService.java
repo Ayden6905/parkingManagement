@@ -8,6 +8,9 @@ package parkingManagement;
  *
  * @author User
  */
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
 import java.time.LocalDateTime;
 
 public class TicketService {
@@ -26,7 +29,7 @@ public class TicketService {
     }
     
     public Receipt closeTicketAndPay(String plate, double hourlyRate,
-                                      double fineAmount, String paymentMethod) {
+                                      double fineToPay, String paymentMethod) {
 
         Ticket ticket = Ticket.findActiveByPlate(plate);
         if (ticket == null) {
@@ -36,22 +39,60 @@ public class TicketService {
         LocalDateTime exitTime = LocalDateTime.now();
         int hours = ticket.calculateDurationHours();
         double parkingFee = hours * hourlyRate;
-        double totalPaid = parkingFee + fineAmount;
+        double totalPaid = parkingFee + fineToPay;
 
-        ticket.closeTicket(exitTime, parkingFee, fineAmount, totalPaid, paymentMethod);
-        paymentService.recordPayment(ticket.getTicketId(), plate, totalPaid, paymentMethod, fineAmount);
-        paymentService.createReceipt(ticket.getTicketId(), parkingFee, fineAmount, totalPaid);
+        ticket.closeTicket(exitTime, parkingFee, fineToPay, totalPaid, paymentMethod);
+        
+        String paymentSQL = "INSERT INTO payment (ticketId, amount, paymentMethod) VALUES (?, ?, ?)";
+
+        try (Connection conn = DatabaseConfig.getConnection();
+             PreparedStatement ps = conn.prepareStatement(paymentSQL)) {
+
+            ps.setString(1, ticket.getTicketId());
+            ps.setDouble(2, totalPaid);
+            ps.setString(3, paymentMethod);
+            ps.executeUpdate();
+
+        } catch (SQLException e) {
+            System.out.println("Payment insert error: " + e.getMessage());
+        }
+        
+        String receiptSQL = "INSERT INTO receipt (ticketId, parkingFee, fineAmount, totalPaid) VALUES (?, ?, ?, ?)";
+
+        try (Connection conn = DatabaseConfig.getConnection();
+             PreparedStatement ps = conn.prepareStatement(receiptSQL)) {
+
+            ps.setString(1, ticket.getTicketId());
+            ps.setDouble(2, parkingFee);
+            ps.setDouble(3, fineToPay);
+            ps.setDouble(4, totalPaid);
+            ps.executeUpdate();
+
+        } catch (SQLException e) {
+            System.out.println("Receipt insert error: " + e.getMessage());
+        }
+        
+         String freeSpotSQL = "UPDATE parkingSpot SET status='Available' WHERE spotId=?";
+         try (Connection conn = DatabaseConfig.getConnection();
+              PreparedStatement ps = conn.prepareStatement(freeSpotSQL)) {
+
+            ps.setString(1, ticket.getSpotId());
+            ps.executeUpdate();
+
+        } catch (SQLException e) {
+            System.out.println("Spot free error: " + e.getMessage());
+        }
 
         return new Receipt(
                 ticket.getTicketId(),
-                plate,
+                ticket.getLicensePlate(),
                 ticket.getEntryTime(),
+                LocalDateTime.now(),
                 hours,
                 parkingFee,
-                fineAmount,
+                fineToPay,
                 totalPaid,
                 paymentMethod
         );
     }
-    
 }
