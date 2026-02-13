@@ -9,17 +9,19 @@ package parkingManagement;
  * @author HP
  */
 public abstract class ParkingSpot {
-    protected String spotId;
-    protected SpotType spotType;
-    protected SpotStatus status;
-    protected double hourlyRate;
-    protected int floorNumber;
-    protected Vehicle currentVehicle;
+    private String spotId;
+    private SpotType spotType;
+    private SpotStatus status;
+    private double hourlyRate;
+    private int floorNumber;
+    private Vehicle currentVehicle;
     
-    public ParkingSpot(String spotId, int floorNumber)
+    protected ParkingSpot(String spotId, int floorNumber, SpotType spotType, double hourlyRate)
     {
         this.spotId = spotId;
         this.floorNumber = floorNumber;
+        this.spotType = spotType;
+        this.hourlyRate = hourlyRate;
         this.status = SpotStatus.AVAILABLE;
         this.currentVehicle = null;
     }
@@ -31,13 +33,7 @@ public abstract class ParkingSpot {
     
     public void parkVehicle(Vehicle v)
     {
-        if (v == null)
-            return;
-        
-        if (!isAvailable())
-            return;
-        
-        if (!canParkVehicle(v))
+        if (v == null || !isAvailable() || !canParkVehicle(v))
             return;
         
         this.currentVehicle = v;
