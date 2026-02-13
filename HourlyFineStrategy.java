@@ -8,13 +8,14 @@ package parkingManagement;
  *
  * @author ayden
  */
-public class Car extends Vehicle {
-    public Car(String licensePlate) {
-        super(licensePlate);
-    }
+public class HourlyFineStrategy implements FineStrategy {
 
     @Override
-    public VehicleType getVehicleType() {
-        return VehicleType.CAR;
+    public double calculateFine(long totalHours) {
+        if (totalHours > 24) {
+            long overstayHours = totalHours - 24;
+            return overstayHours * 20.0;
+        }
+        return 0.0;
     }
 }

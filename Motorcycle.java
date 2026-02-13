@@ -8,7 +8,13 @@ package parkingManagement;
  *
  * @author ayden
  */
-public interface FineStrategy {
-    // Calculates fine based on TOTAL hours parked
-    double calculateFine(long totalHours);
+public class Motorcycle extends Vehicle {
+    public Motorcycle(String licensePlate) {
+        super(licensePlate);
+    }
+
+    @Override
+    public VehicleType getVehicleType() {
+        return VehicleType.MOTORCYCLE;
+    }
 }

@@ -19,7 +19,7 @@ public class AdminLogin extends JPanel {
         this.mainFrame = mainFrame;
 
         setLayout(new GridBagLayout());
-        setBackground(Color.WHITE); // Matches the clean look of your design
+        setBackground(Color.WHITE); 
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(10, 10, 10, 10);
 

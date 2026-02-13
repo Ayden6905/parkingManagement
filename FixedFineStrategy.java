@@ -8,7 +8,13 @@ package parkingManagement;
  *
  * @author ayden
  */
-public interface FineStrategy {
-    // Calculates fine based on TOTAL hours parked
-    double calculateFine(long totalHours);
+public class FixedFineStrategy implements FineStrategy {
+    
+    @Override
+    public double calculateFine(long totalHours) {
+        if (totalHours > 24) {
+            return 50.0;
+        }
+        return 0.0;
+    }
 }

@@ -195,3 +195,12 @@ public class ParkingLot {
 //        System.out.println("ParkingLot initialized with " + floors + " floors.");
 //    }
 //}
+package parkingmanagement;
+
+/**
+ *
+ * @author HP
+ */
+public enum ReservationStatus {
+    ACTIVE, USED, EXPIRED, CANCELLED
+}
