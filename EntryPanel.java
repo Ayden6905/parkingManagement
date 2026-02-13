@@ -2,19 +2,18 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
-package parkingmanagement;
+package parkingManagement;
 
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
-/**
- * MEMBER 4's UI + MEMBER 2's LOGIC CONNECTION
- */
+
+ // MEMBER 4 UI + MEMBER 2 LOGIC CONNECTION 
 public class EntryPanel extends JPanel {
     private MainFrame mainFrame; 
-    private ParkingSystemFacade facade; // The bridge to your logic
+    private ParkingSystemFacade facade; // The bridge to logic
 
     public EntryPanel(ParkingSystemFacade facade, MainFrame mainFrame) {
         this.facade = facade;
@@ -25,7 +24,7 @@ public class EntryPanel extends JPanel {
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(10, 10, 10, 10);
 
-        // --- 1. UI Components (Visuals) ---
+        //1. UI Components
         JLabel title = new JLabel("Vehicle Entry System");
         title.setFont(new Font("SansSerif", Font.BOLD, 20));
         
@@ -57,12 +56,11 @@ public class EntryPanel extends JPanel {
         gbc.gridy = 4; 
         add(btnBack, gbc);
 
-        // --- 3. Button Actions (Connecting to Logic) ---
-        
+        //Button Actions 
         // BACK BUTTON
         btnBack.addActionListener(e -> mainFrame.showHome());
 
-        // PARK BUTTON ( The Critical Part )
+        // PARK BUTTON (Critical)
         btnPark.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -70,7 +68,7 @@ public class EntryPanel extends JPanel {
                 String plate = plateField.getText();
                 String type = (String) typeCombo.getSelectedItem();
                 
-                // Call Facade (Member 2's Logic)
+                // Call Facade (Member 2 Logic)
                 String result = facade.handleVehicleEntry(plate, type);
                 
                 // Show Result to User

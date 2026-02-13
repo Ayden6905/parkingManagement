@@ -2,7 +2,7 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
-package parkingmanagement;
+package parkingManagement;
 
 /**
  *
@@ -22,30 +22,36 @@ public class AdminPanel extends JPanel {
         setLayout(new BorderLayout());
         setBackground(new Color(240, 240, 240));
 
-        // 1. Top Navigation Bar
+        // 1. Top NavBar
         JPanel navBar = new JPanel(new BorderLayout());
         JButton btnBack = new JButton("Logout/Back");
         navBar.add(btnBack, BorderLayout.WEST);
         navBar.add(new JLabel("ADMINISTRATOR DASHBOARD", SwingConstants.CENTER), BorderLayout.CENTER);
         add(navBar, BorderLayout.NORTH);
 
-        // 2. Center Content - Stats and Fine Management
+        // 2. Center Content
         JPanel content = new JPanel(new GridLayout(2, 1, 10, 10));
         content.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
-        // Stats Section
+        // Stats 
         JPanel statsPanel = new JPanel(new FlowLayout());
         statsPanel.setBorder(BorderFactory.createTitledBorder("Live System Stats"));
-        statsPanel.add(new JLabel("Current Occupancy: 85%")); // This will eventually call Facade
-        statsPanel.add(new JLabel(" | Total Revenue: RM 450.00"));
+        statsPanel.add(new JLabel("Current Occupancy: --%")); 
+        statsPanel.add(new JLabel(" | Total Revenue: RM --.--"));
         content.add(statsPanel);
 
-        // Fine Scheme Section (Member 2's Logic integration)
+        // Fine Scheme Configuration (Member 2 Logic) 
         JPanel finePanel = new JPanel(new FlowLayout());
         finePanel.setBorder(BorderFactory.createTitledBorder("System Configuration"));
-        String[] schemes = {"Standard Scheme", "Holiday Scheme", "Student Discount"};
+        
+        // This controls what admin see in dropdown box
+        String[] schemes = {"Fixed", "Progressive", "Hourly"};
         JComboBox<String> schemeCombo = new JComboBox<>(schemes);
         JButton btnUpdate = new JButton("Apply Fine Scheme");
+        
+        // Ask database what the current scheme is and select it automatically
+        String currentScheme = facade.getCurrentFineScheme();
+        schemeCombo.setSelectedItem(currentScheme);
         
         finePanel.add(new JLabel("Active Fine Strategy:"));
         finePanel.add(schemeCombo);
@@ -54,14 +60,23 @@ public class AdminPanel extends JPanel {
 
         add(content, BorderLayout.CENTER);
 
-        // Navigation back to Home
+        // BUTTON ACTIONS
+
+        // Back Button
         btnBack.addActionListener(e -> mainFrame.showHome());
 
-        // Interaction with Facade
+        // Update Button
         btnUpdate.addActionListener(e -> {
             String selected = (String) schemeCombo.getSelectedItem();
-            facade.changeSystemFineScheme(selected);
-            JOptionPane.showMessageDialog(this, "Fine System Updated to: " + selected);
+            
+            // This calls Member 2 logic to update the database
+            boolean success = facade.changeSystemFineScheme(selected);
+            
+            if (success) {
+                JOptionPane.showMessageDialog(this, "Success: Fine System updated to " + selected);
+            } else {
+                JOptionPane.showMessageDialog(this, "Error: Could not update database.");
+            }
         });
     }
 }

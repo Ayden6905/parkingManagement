@@ -2,7 +2,7 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
-package parkingmanagement;
+package parkingManagement;
 
 /**
  *
@@ -15,7 +15,7 @@ import java.sql.SQLException;
 
 public class ParkingSystemFacade {
     
-    // --- Member 2: Your Logic Modules ---
+    // --- Member 2: Logic Modules ---
     private VehicleRepository vehicleRepo;
     private ParkingRepository parkingRepo;
     
@@ -23,12 +23,18 @@ public class ParkingSystemFacade {
     private FineManager fineManager;
 
     public ParkingSystemFacade() {
-        // 1. Initialize your Database Repositories
+        // 1. Initialize Database Repositories
         this.vehicleRepo = new VehicleRepository();
         this.parkingRepo = new ParkingRepository();
         
-        // 2. Initialize friend's modules
+        // 2. Initialize Fine Manager
         this.fineManager = new FineManager();
+        
+        // 3. LOAD SAVED SCHEME FROM DB
+        // This ensures the system remembers the Admin's choice even after restarting.
+        String savedScheme = getCurrentFineScheme();
+        this.fineManager.setStrategy(savedScheme);
+        System.out.println("System loaded with Fine Scheme: " + savedScheme);
     }
 
     // --- UTILITY: Check DB Connection ---
@@ -64,7 +70,7 @@ public class ParkingSystemFacade {
     }
 
     // ============================================================
-    //       MEMBER 2's WORK (Vehicle Entry) - THE REAL LOGIC
+    //       MEMBER 2's WORK (Vehicle Entry)
     // ============================================================
     public String handleVehicleEntry(String plate, String typeStr) {
         // 1. Input Validation
@@ -101,19 +107,65 @@ public class ParkingSystemFacade {
     }
 
     // ============================================================
-    //       EXIT LOGIC (Placeholder for now)
+    //       EXIT LOGIC (Placeholder / Stub)
     // ============================================================
     public Receipt handleVehicleExit(String plate) {
-        // Keeping this fake for now so the code compiles.
-        // We will fix this in the next step!
+        // Keeping this as a stub so the code compiles.
+        // We will replace this with real database logic in the next step!
+        
         int hoursParked = 2;  
         double hourlyRate = 3.00;
-        double fine = fineManager.calculateFine("NONE"); 
+        
+        // Corrected: Passing 'long' (hours) instead of String
+        double fine = fineManager.calculateFine(hoursParked); 
+        
         double totalPaid = (hoursParked * hourlyRate) + fine;
         return new Receipt(plate, hoursParked, totalPaid);
     }
 
-    public void changeSystemFineScheme(String schemeName) {
-        System.out.println("Switching scheme to: " + schemeName);
+    // ============================================================
+    //       MEMBER 2: FINE SCHEME MANAGEMENT (Admin Features)
+    // ============================================================
+
+    // 1. GET Current Scheme (To display to Admin)
+    public String getCurrentFineScheme() {
+        String sql = "SELECT current_scheme FROM fineStrategy WHERE id = 1";
+        
+        try (Connection conn = DatabaseConfig.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+            
+            if (rs.next()) {
+                return rs.getString("current_scheme");
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return "Fixed"; // Default fallback
+    }
+
+    // 2. SET New Scheme (When Admin clicks a button)
+    public boolean changeSystemFineScheme(String schemeName) {
+        // A. Update the Database
+        String sql = "UPDATE fineStrategy SET current_scheme = ? WHERE id = 1";
+        
+        try (Connection conn = DatabaseConfig.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            
+            stmt.setString(1, schemeName);
+            int rows = stmt.executeUpdate();
+            
+            if (rows > 0) {
+                // B. Update the Live Logic
+                fineManager.setStrategy(schemeName);
+                System.out.println("Strategy switched to: " + schemeName);
+                return true;
+            }
+            
+        } catch (SQLException e) {
+            e.printStackTrace();
+            System.out.println("Error updating fine scheme: " + e.getMessage());
+        }
+        return false;
     }
 }

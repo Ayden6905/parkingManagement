@@ -2,7 +2,7 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
-package parkingmanagement;
+package parkingManagement;
 
 /**
  *
@@ -35,7 +35,7 @@ public class VehicleRepository {
         }
     }
 
-    // 2. FIND a vehicle by license plate (Needed for Exit & Fine checks)
+    // 2. Find vehicle by license plate (for Exit && Fine checks)
     public Vehicle findVehicle(String licensePlate) throws SQLException {
         String sql = "SELECT * FROM vehicle WHERE licensePlate = ?";
         
@@ -49,9 +49,9 @@ public class VehicleRepository {
                     String typeStr = rs.getString("vehicleType");
                     double fines = rs.getDouble("outstandingFines");
                     
-                    // Use your Factory to recreate the object!
+                    // Use Factory to recreate the object
                     Vehicle v = SimpleVehicleFactory.createVehicle(licensePlate, typeStr);
-                    v.addFine(fines); // Restore any old fines
+                    v.addFine(fines); // Restore old fines
                     return v;
                 }
             }

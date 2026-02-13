@@ -8,6 +8,7 @@ package parkingManagement;
  *
  * @author ayden
  */
-public enum VehicleType {
-    MOTORCYCLE, CAR, SUV, HANDICAPPED
+public interface FineStrategy {
+    // Calculates fine based on TOTAL hours parked
+    double calculateFine(long totalHours);
 }

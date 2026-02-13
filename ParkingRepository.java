@@ -2,7 +2,7 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
-package parkingmanagement;
+package parkingManagement;
 
 /**
  *
@@ -13,7 +13,7 @@ import java.time.format.DateTimeFormatter;
 
 public class ParkingRepository {
 
-    // 1. FIND A SPOT: matches vehicle type to allowed spot types
+    // 1. Matches vehicle type to allowed spot types
     public String findAvailableSpot(VehicleType type) throws SQLException {
         
         String allowedTypes;
@@ -37,7 +37,7 @@ public class ParkingRepository {
                 return null;
         }
 
-        // We use String.format or concatenation to build the query safely
+        // String.format to build the query safely
         String sql = "SELECT spotId FROM parkingSpot " +
                      "WHERE status = 'Available' AND spotType IN (" + allowedTypes + ") " +
                      "LIMIT 1";
@@ -53,7 +53,7 @@ public class ParkingRepository {
         return null; // No spots found
     }
 
-    // 2. PARK THE VEHICLE: Updates spot status AND creates a ticket
+    // 2. Updates spot status AND creates a ticket
     public boolean parkVehicle(Vehicle vehicle, String spotId) {
         String updateSpotSql = "UPDATE parkingSpot SET status = 'Occupied' WHERE spotId = ?";
         String insertTicketSql = "INSERT INTO ticket (ticketId, licensePlate, spotId, entryTime) VALUES (?, ?, ?, ?)";
