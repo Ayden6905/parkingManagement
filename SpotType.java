@@ -8,6 +8,7 @@
  *
  * @author HP
  */
+// for type of spot
 public enum SpotType {
     COMPACT,
     REGULAR,

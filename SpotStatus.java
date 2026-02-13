@@ -8,6 +8,7 @@
  *
  * @author HP
  */
+// for spot availability
 public enum SpotStatus {
     AVAILABLE,
     OCCUPIED
