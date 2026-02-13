@@ -11,12 +11,15 @@
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 
 public class ParkingLot {
     private String parkingLotId;
     private List<Floor> floors;
     private double totalRevenue;
-    private FineStrategy fineStrategy; //stub
     
     private List<Reservation> reservations;
     private static ParkingLot instance;
@@ -162,7 +165,7 @@ public class ParkingLot {
         // find the ticket
         Ticket t = Ticket.findActiveByPlate(licensePlate);
         
-        if (t == null) { return null; }
+        if (t == null) return null; 
         
         //stub for now
         LocalDateTime exitTime = LocalDateTime.now();
@@ -178,14 +181,37 @@ public class ParkingLot {
     }
     
     public ParkingSpot findSpotById(String spotId)
-    {
-        for (Floor f : floors)
-        {
-            for (ParkingSpot s : f.getAllSpots())
-            {
-                if (s.getSpotId().equals(spotId)) return s;
+    {        
+        String sql = "SELECT spotId, type, floorNumber FROM parkingSpot WHERE spotId = ?";
+
+        try (Connection conn = DatabaseConfig.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, spotId);
+            ResultSet rs = ps.executeQuery();
+
+            if (rs.next()) {
+                String type = rs.getString("type");
+                int floorNumber = rs.getInt("floorNumber");
+
+                switch (type.toUpperCase()) {
+                    case "REGULAR":
+                        return new RegularSpot(spotId, floorNumber);
+                    case "COMPACT":
+                        return new CompactSpot(spotId, floorNumber);
+                    case "HANDICAPPED":
+                        return new HandicappedSpot(spotId, floorNumber);
+                    case "RESERVED":
+                        return new ReservedSpot(spotId, floorNumber);
+                    default:
+                        System.out.println("Unknown spot type in DB: " + type);
+                }
             }
+
+        } catch (SQLException e) {
+            System.out.println("Find spot error: " + e.getMessage());
         }
+
         return null;
     }
     
@@ -204,28 +230,5 @@ public class ParkingLot {
     
     public void setFineStrategy(FineStrategy strategy)
     {
-        this.fineStrategy = strategy;
     }
-    
-    //stub
-    public interface FineStrategy
-    {
-        double calculateFine(int hoursOverStayed);
-    }
-}
-
-//public class ParkingLot {
-//    // Stub class so Member 4 can continue integration
-//    public ParkingLot(int floors) {
-//        System.out.println("ParkingLot initialized with " + floors + " floors.");
-//    }
-//}
-package parkingmanagement;
-
-/**
- *
- * @author HP
- */
-public enum ReservationStatus {
-    ACTIVE, USED, EXPIRED, CANCELLED
 }

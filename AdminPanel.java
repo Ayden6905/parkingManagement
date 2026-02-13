@@ -78,7 +78,7 @@ public class AdminPanel extends JPanel {
             String selected = (String) schemeCombo.getSelectedItem();
             
             // This calls Member 2 logic to update the database
-            boolean success = facade.changeSystemFineScheme(selected);
+            boolean success = facade.changeSystemFineSchemeDb(selected);
             
             if (success) {
                 JOptionPane.showMessageDialog(this, "Success: Fine System updated to " + selected);
@@ -130,7 +130,7 @@ public class AdminPanel extends JPanel {
         JPanel panel = new JPanel(new BorderLayout());
         panel.add(scrollPane, BorderLayout.CENTER);
 
-        JLabel totalLabel = new JLabel("Total Revenue: RM " + totalRevenue);
+        JLabel totalLabel = new JLabel(String.format("Total Revenue: RM %.2f", totalRevenue));
         totalLabel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         panel.add(totalLabel, BorderLayout.SOUTH);
 

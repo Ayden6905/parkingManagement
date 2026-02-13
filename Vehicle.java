@@ -11,17 +11,19 @@
 import java.time.LocalDateTime;
 
 public abstract class Vehicle {
-    private String licensePlate;
-    private VehicleType vehicleType;
-    private LocalDateTime entryTime;
-    private LocalDateTime exitTime; //null if still in parking
-    
-    protected Vehicle(String licensePlate, VehicleType vehicleType)
-    {
+
+    private final String licensePlate;
+    private final VehicleType vehicleType;
+    private final LocalDateTime entryTime;
+    private LocalDateTime exitTime;
+    private double outstandingFines;
+
+    protected Vehicle(String licensePlate, VehicleType vehicleType) {
         this.licensePlate = licensePlate;
-        this.vehicleType= vehicleType;
+        this.vehicleType = vehicleType;
         this.entryTime = LocalDateTime.now();
         this.exitTime = null;
+        this.outstandingFines = 0.0;
     }
     
     public String getLicensePlate()
@@ -39,41 +41,22 @@ public abstract class Vehicle {
         return entryTime;
     }
     
-    public void setExitTime(LocalDateTime exitTime)
+    public LocalDateTime getExitTime()
     {
+        return exitTime;
+    }
+    
+    public double getOutstandingFines() {
+        return outstandingFines;
+    }
+    
+    public void setExitTime(LocalDateTime exitTime) {
         this.exitTime = exitTime;
     }
-package parkingManagement;
 
-/**
- *
- * @author ayden
- */
-import java.time.LocalDateTime;
-
-public abstract class Vehicle {
-    protected String licensePlate;
-    protected LocalDateTime entryTime;
-    protected LocalDateTime exitTime;
-    protected double outstandingFines;
-
-    public Vehicle(String licensePlate) {
-        this.licensePlate = licensePlate;
-        this.entryTime = LocalDateTime.now(); // Sets entry time to 'now'
-        this.outstandingFines = 0.0;
+    public void addFine(double amount) {
+        if (amount > 0) {
+            this.outstandingFines += amount;
+        }
     }
-
-    // Abstract method: Forces subclasses to identify themselves
-    public abstract VehicleType getVehicleType();
-
-    // --- Getters and Setters ---
-    public String getLicensePlate() { return licensePlate; }
-    
-    public LocalDateTime getEntryTime() { return entryTime; }
-    
-    public void setExitTime(LocalDateTime exitTime) { this.exitTime = exitTime; }
-    public LocalDateTime getExitTime() { return exitTime; }
-    
-    public double getOutstandingFines() { return outstandingFines; }
-    public void addFine(double amount) { this.outstandingFines += amount; }
 }
