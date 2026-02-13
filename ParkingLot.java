@@ -161,28 +161,29 @@ public class ParkingLot {
     }
     
     public Receipt exitVehicle(String licensePlate) 
-    {
+{
         // find the ticket
         Ticket t = Ticket.findActiveByPlate(licensePlate);
-        
+
         if (t == null) return null; 
-        
-        //stub for now
+
+        // stub for now
         LocalDateTime exitTime = LocalDateTime.now();
         double parkingFee = 0.0;
         double fineAmount = 0.0;
         double totalPaid = 0.0;
         String paymentMethod = "N/A";
-        
+        double remainingBalance = 0.0;
+
         t.closeTicket(exitTime, parkingFee, fineAmount, totalPaid, paymentMethod);
-        
-        //create receipt
-        return new Receipt (t, parkingFee, fineAmount, totalPaid);
+
+        // create receipt
+        return new Receipt(t, parkingFee, fineAmount, totalPaid, paymentMethod, remainingBalance);
     }
     
     public ParkingSpot findSpotById(String spotId)
     {        
-        String sql = "SELECT spotId, type, floorNumber FROM parkingSpot WHERE spotId = ?";
+        String sql = "SELECT spotId, floorNumber, spotType, hourlyRate FROM parkingSpot WHERE spotId = ?";
 
         try (Connection conn = DatabaseConfig.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -191,27 +192,22 @@ public class ParkingLot {
             ResultSet rs = ps.executeQuery();
 
             if (rs.next()) {
-                String type = rs.getString("type");
-                int floorNumber = rs.getInt("floorNumber");
+                String type = rs.getString("spotType");
+                int floor = rs.getInt("floorNumber");
+                double rate = rs.getDouble("hourlyRate");
 
-                switch (type.toUpperCase()) {
-                    case "REGULAR":
-                        return new RegularSpot(spotId, floorNumber);
-                    case "COMPACT":
-                        return new CompactSpot(spotId, floorNumber);
-                    case "HANDICAPPED":
-                        return new HandicappedSpot(spotId, floorNumber);
-                    case "RESERVED":
-                        return new ReservedSpot(spotId, floorNumber);
-                    default:
-                        System.out.println("Unknown spot type in DB: " + type);
+                switch(type.toUpperCase()) {
+                    case "REGULAR": return new RegularSpot(spotId, floor);
+                    case "HANDICAPPED": return new HandicappedSpot(spotId, floor);
+                    case "RESERVED": return new ReservedSpot(spotId, floor);
+                    case "COMPACT": return new CompactSpot(spotId, floor);
+                    default: throw new IllegalArgumentException("Unknown spot type: " + type);
                 }
             }
 
         } catch (SQLException e) {
             System.out.println("Find spot error: " + e.getMessage());
         }
-
         return null;
     }
     

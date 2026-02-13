@@ -8,15 +8,13 @@
  * @author HP
  */
 public class RegularSpot extends ParkingSpot {
-    public RegularSpot(String spotId, int floorNumber)
-    {
+    public RegularSpot(String spotId, int floorNumber) {
         super(spotId, floorNumber, SpotType.REGULAR, 5.0);
     }
-    
+
     @Override
-    protected boolean canParkVehicle(Vehicle v)
-    {
+    protected boolean canParkVehicle(Vehicle v) {
         VehicleType t = v.getVehicleType();
-        return t == VehicleType.CAR || t== VehicleType.SUV || t == VehicleType.HANDICAPPED;
+        return t == VehicleType.CAR || t == VehicleType.SUV || t == VehicleType.HANDICAPPED;
     }
 }

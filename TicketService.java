@@ -38,9 +38,9 @@ public class TicketService {
     }
     
     public Receipt closeTicketAndPay(String plate,
-                                     double hourlyRate,
-                                     double fineToPay,
-                                     String paymentMethod) {
+                                 double hourlyRate,
+                                 double fineToPay,
+                                 String paymentMethod) {
 
         Ticket ticket = Ticket.findActiveByPlate(plate);
         if (ticket == null) return null;
@@ -49,14 +49,16 @@ public class TicketService {
         int hours = ticket.calculateDurationHours();
         double parkingFee = hours * hourlyRate;
         double totalPaid = parkingFee + fineToPay;
+        double remainingBalance = 0.0; 
 
         ticket.closeTicket(exitTime, parkingFee, fineToPay, totalPaid, paymentMethod);
 
         insertPayment(ticket.getTicketId(), totalPaid, paymentMethod);
         insertReceipt(ticket.getTicketId(), parkingFee, fineToPay, totalPaid);
+
         freeParkingSpot(ticket.getSpotId().getSpotId());
 
-        return new Receipt(ticket, parkingFee, fineToPay, totalPaid);
+        return new Receipt(ticket, parkingFee, fineToPay, totalPaid, paymentMethod, remainingBalance);
     }
     
     public List<RevenueRecord> getRevenueReport() {
