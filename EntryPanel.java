@@ -2,7 +2,6 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
-package parkingManagement;
 
 /**
  *
@@ -10,10 +9,14 @@ package parkingManagement;
  */
 import javax.swing.*;
 import java.awt.*;
+import java.util.List;
 
 public class EntryPanel extends JPanel {
     private MainFrame mainFrame; // To allow going back to home
     private ParkingSystemFacade facade;
+    
+    private JTextField plateField;
+    private JComboBox<?> typeCombo;
 
     public EntryPanel(ParkingSystemFacade facade, MainFrame mainFrame) {
         this.facade = facade;
@@ -46,14 +49,44 @@ public class EntryPanel extends JPanel {
         
         gbc.gridx = 0; gbc.gridy = 3; gbc.gridwidth = 2; add(btnPark, gbc);
         gbc.gridy = 4; add(btnBack, gbc);
-
-        // Member 4: Connect UI to Facade
+        
         btnPark.addActionListener(e -> {
-            String plate = plateField.getText();
+            String plate = plateField.getText().trim().toUpperCase();
             String type = (String) typeCombo.getSelectedItem();
-            String result = facade.handleVehicleEntry(plate, type);
-            JOptionPane.showMessageDialog(this, result);
+
+            if (plate.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Please enter license plate.");
+                return;
+            }
+
+            List<String> spots = facade.getAvailableSpots();
+
+            if (spots.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "No available spots.");
+                return;
+            }
+
+            String selectedSpot = (String) JOptionPane.showInputDialog(
+                    this,
+                    "Select Available Spot:",
+                    "Choose Spot",
+                    JOptionPane.PLAIN_MESSAGE,
+                    null,
+                    spots.toArray(),
+                    spots.get(0)
+            );
+
+            if (selectedSpot != null) {
+                String ticketResult = facade.handleVehicleEntry(plate, type, selectedSpot);
+
+                JTextArea textArea = new JTextArea(ticketResult);
+                JOptionPane.showMessageDialog(this,
+                        new JScrollPane(textArea),
+                        "Ticket Issued",
+                        JOptionPane.PLAIN_MESSAGE);
+            }
         });
+
 
         // Navigation back to your Main Screen
         btnBack.addActionListener(e -> mainFrame.showHome());
