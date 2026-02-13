@@ -34,7 +34,7 @@ public class ParkingSystemFacade {
     
     // Member 4: This is the logic that makes your button work!
     public boolean authenticateAdmin(String username, String password) {
-        String query = "SELECT * FROM admins WHERE username = ? AND password = ?";
+        String query = "SELECT * FROM admin WHERE username = ? AND password = ?";
         
         try (Connection conn = DatabaseConfig.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(query)) {
