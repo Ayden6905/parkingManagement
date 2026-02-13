@@ -179,14 +179,11 @@ public class ParkingSystemFacade {
 
     //available spots
     public List<String> getAvailableSpots() {
-
         List<String> spots = new java.util.ArrayList<>();
 
-        String sql = "SELECT spotId FROM parkingSpot WHERE status='Available'";
+        String sql = "SELECT spotId FROM parkingSpot WHERE UPPER(status) = 'AVAILABLE'";
 
-        try (Connection conn = DatabaseConfig.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
+        try (Connection conn = DatabaseConfig.getConnection(); PreparedStatement ps = conn.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
 
             while (rs.next()) {
                 spots.add(rs.getString("spotId"));
