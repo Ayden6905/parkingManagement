@@ -176,4 +176,41 @@ public class Ticket {
     public double getFineAmount() { return fineAmount; }
     public double getTotalPaid() { return totalPaid; }
     public String getPaymentMethod() { return paymentMethod; }
+package parkingManagement;
+
+/**
+ *
+ * @author HP
+ */
+
+import java.time.LocalDateTime;
+
+public class Ticket {
+    private String ticketId;
+    private LocalDateTime entryTime;
+    private Vehicle licensePlate;
+    private ParkingSpot spotId;
+    
+    public Ticket(Vehicle v, ParkingSpot s)
+    {
+        this.licensePlate = v;
+        this.spotId = s;
+        this.entryTime = LocalDateTime.now();
+        this.ticketId = generateTicketId();
+    }
+    
+    public String getTicketId()
+    {
+        return ticketId;
+    }
+    
+    public LocalDateTime getEntryTime()
+    {
+        return entryTime;
+    }
+    
+    public String generateTicketId()
+    {
+        return "T-" + licensePlate.getLicensePlate() + "-" + System.currentTimeMillis();
+    }
 }

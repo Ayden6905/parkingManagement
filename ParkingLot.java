@@ -7,9 +7,191 @@
  *
  * @author NurqistinaAtashah
  */
+
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+
 public class ParkingLot {
-    // Stub class so Member 4 can continue integration
-    public ParkingLot(int floors) {
-        System.out.println("ParkingLot initialized with " + floors + " floors.");
+    private String parkingLotId;
+    private List<Floor> floors;
+    private double totalRevenue;
+    private FineStrategy fineStrategy; //stub
+    
+    private List<Reservation> reservations;
+    private static ParkingLot instance;
+    
+    private ParkingLot()
+    {
+        this.parkingLotId = "PL-1";
+        this.floors = new ArrayList<>();
+        this.reservations = new ArrayList<>();
+        addDefaultFloors(5);
+    }
+    
+    public static ParkingLot getInstance()
+    {
+        if (instance == null)
+        {
+            instance = new ParkingLot();
+        }
+        return instance;
+    }
+    
+    public ParkingLot(int numberOfFloors)
+    {
+        this.parkingLotId = "PL-1";
+        this.floors = new ArrayList<>();
+        this.reservations = new ArrayList<>();
+        addDefaultFloors(numberOfFloors);
+    }
+    
+    public void addFloor(Floor floor)
+    {
+        floors.add(floor);
+    }
+    
+    // build parking layout
+    private void addDefaultFloors(int numberOfFloors)
+    {
+        for (int f = 1; f <= numberOfFloors; f++)
+        {
+            Floor floor = new Floor(f);
+            
+            for (int row = 1; row <= 4; row++)
+            {
+                for (int s = 1; s <= 10; s++)
+                {
+                    String spotId = "F" + f + "-R" + row + "-S" + s;
+                    floor.addSpot(createSpotByRow(spotId, f, row));
+                }
+            }
+            addFloor(floor);
+        }
+    }
+    
+    //assigning spot type
+    private ParkingSpot createSpotByRow(String spotId, int floorNumber, int row)
+    {
+        switch (row)
+        {
+            case 1:
+                return new ReservedSpot(spotId, floorNumber);
+            case 2:
+                return new CompactSpot(spotId, floorNumber);
+            case 3:
+                return new HandicappedSpot(spotId, floorNumber);
+            case 4:
+                return new RegularSpot(spotId, floorNumber);
+            default:
+                throw new IllegalArgumentException("Invalid row: " + row);
+        }
+    }
+    
+    // to let other to add reservations
+    public void addReservation(Reservation r)
+    {
+        reservations.add(r);
+    }
+    
+    //search for spot
+    public List<ParkingSpot> getAvailableSpots(Vehicle v)
+    {
+        List<ParkingSpot> result = new ArrayList<>();
+        LocalDateTime now = LocalDateTime.now();
+        
+        for (Floor floor : floors)
+        {
+            for (ParkingSpot spot : floor.getAllSpots())
+            {
+                if (!spot.isAvailable()) continue;
+                if (!spot.canParkVehicle(v)) continue;
+                
+                //check for reservation (only for ReservedSpot)
+                if (spot instanceof ReservedSpot)
+                {
+                    Reservation r = findValidReservationFor(v, spot, now);
+                    if (r == null) continue; // no reservation, cannot use reserved spot
+                }
+                
+                result.add(spot);
+            }
+        }
+        return result;
+    }
+    
+    //find the reservation
+    private Reservation findValidReservationFor(Vehicle v, ParkingSpot spot, LocalDateTime now)
+    {
+        for (Reservation r : reservations)
+        {
+            if (r.getLicensePlate().equals(v.getLicensePlate())
+                && r.isValid(now) && r.matchesSpot(spot))
+                        {
+                            return r;
+                        }
+        }
+        return null;
+    }
+    
+    public Ticket parkVehicle(Vehicle v, ParkingSpot s)
+    {
+        if (v == null || s == null) return null;
+        
+        // reserved spot must have reservation
+        if (s instanceof ReservedSpot)
+        {
+            Reservation r = findValidReservationFor(v, s, LocalDateTime.now());
+            if (r == null) return null;
+            r.markUsed();
+        }
+        
+        if (!s.isAvailable()) return null;
+        if (!s.canParkVehicle(v)) return null;
+        
+        s.parkVehicle(v);
+        
+        //stub
+        return new Ticket(v, s);
+    }
+    
+    public Receipt exitVehicle(String licensePlate) 
+    {
+        // stub values for now (testing only)
+        int hours = 0;
+        double total = 0.0;
+
+        return new Receipt(licensePlate, hours, total);
+    }
+    
+    public double calculateOccupancy()
+    {
+        int total = 0;
+        int occupied = 0;
+        
+        for (Floor f : floors)
+        {
+            total += f.getAllSpots().size();
+            occupied += f.getOccupiedSpots().size();
+        }
+        return total == 0 ? 0.0 : (occupied * 1.0/total);
+    }
+    
+    public void setFineStrategy(FineStrategy strategy)
+    {
+        this.fineStrategy = strategy;
+    }
+    
+    //stub
+    public interface FineStrategy
+    {
+        double calculateFine(int hoursOverStayed);
     }
 }
+
+//public class ParkingLot {
+//    // Stub class so Member 4 can continue integration
+//    public ParkingLot(int floors) {
+//        System.out.println("ParkingLot initialized with " + floors + " floors.");
+//    }
+//}
