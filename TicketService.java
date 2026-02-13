@@ -31,7 +31,8 @@ public class TicketService {
             default: throw new RuntimeException("Unknown vehicle type: " + vehicleType);
         }
         
-        ParkingSpot spot = new ParkingSpotFactory().createSpot(spotId); 
+        ParkingSpot spot = ParkingLot.getInstance().findSpotById(spotId);
+        if (spot == null) throw new RuntimeException("Spot not found: " + spotId);
 
         String ticketId = "T-" + plate + "-" + System.currentTimeMillis();
         Ticket ticket = new Ticket(ticketId, vehicle, spot, LocalDateTime.now());
@@ -100,17 +101,7 @@ public class TicketService {
             System.out.println("Spot free error: " + e.getMessage());
         }
 
-        return new Receipt(
-                ticket.getTicketId(),
-                ticket.getLicensePlate(),
-                ticket.getEntryTime(),
-                LocalDateTime.now(),
-                hours,
-                parkingFee,
-                fineToPay,
-                totalPaid,
-                paymentMethod
-        );
+        return new Receipt(ticket, parkingFee, fineToPay, totalPaid);
     }
     
     public List<RevenueRecord> getRevenueReport() {
