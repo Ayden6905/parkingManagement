@@ -21,7 +21,6 @@ public class Receipt {
     private String paymentMethod;
     private LocalDateTime issuedTime;
 
-    // Full constructor if needed
     public Receipt(int receiptId, Ticket ticket, double parkingFee,
                    double fineAmount, double totalPaid, String paymentMethod,
                    LocalDateTime issuedTime) {
@@ -42,7 +41,6 @@ public class Receipt {
         }
     }
 
-    // Simplified constructor used everywhere
     public Receipt(Ticket ticket, double parkingFee, double fineAmount,
                    double totalPaid, String paymentMethod) {
         this.ticket = ticket;
@@ -103,7 +101,6 @@ public class Receipt {
                "Issued Time: " + issuedTime.format(fmt);
     }
 
-    // Getters
     public int getReceiptId() { return receiptId; }
     public Ticket getTicket() { return ticket; }
     public String getPlate() { return plate; }
