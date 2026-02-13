@@ -145,12 +145,22 @@ public class ParkingLot {
         if (s instanceof ReservedSpot)
         {
             Reservation r = findValidReservationFor(v, s, LocalDateTime.now());
-            if (r == null) return null;
+            if (r == null)
+            {
+                throw new RuntimeException("Reserved spot requires a reservation.");   
+            }
             r.markUsed();
         }
         
-        if (!s.isAvailable()) return null;
-        if (!s.canParkVehicle(v)) return null;
+        if (!s.isAvailable()) 
+        {
+            throw new RuntimeException("Parking spot is not available.");
+        }
+        
+        if (!s.canParkVehicle(v))
+        {
+            throw new RuntimeException("This vehicle cannot park in this spot.");
+        }
         
         s.parkVehicle(v);
         
@@ -183,7 +193,7 @@ public class ParkingLot {
     
     public ParkingSpot findSpotById(String spotId)
     {        
-        String sql = "SELECT spotId, floorNumber, spotType, hourlyRate FROM parkingSpot WHERE spotId = ?";
+        String sql = "SELECT spotId, floorNumber, spotType, status, hourlyRate FROM parkingSpot WHERE spotId = ?";
 
         try (Connection conn = DatabaseConfig.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {

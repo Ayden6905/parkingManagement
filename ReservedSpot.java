@@ -16,7 +16,6 @@ public class ReservedSpot extends ParkingSpot {
     @Override
     protected boolean canParkVehicle(Vehicle v)
     {
-        VehicleType t = v.getVehicleType();
-        return t == VehicleType.CAR || t == VehicleType.SUV || t == VehicleType.HANDICAPPED;
+        return (v instanceof Car) || (v instanceof SUV) || (v instanceof HandicappedVehicle);
     }
 }

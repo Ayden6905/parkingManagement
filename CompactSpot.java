@@ -16,7 +16,6 @@ public class CompactSpot extends ParkingSpot {
     @Override
     protected boolean canParkVehicle(Vehicle v)
     {
-        VehicleType t = v.getVehicleType();
-        return t == VehicleType.MOTORCYCLE || t == VehicleType.CAR;
+        return (v instanceof Motorcycle) || (v instanceof Car);
     }
 }

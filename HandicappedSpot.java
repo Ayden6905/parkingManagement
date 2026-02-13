@@ -16,6 +16,6 @@ public class HandicappedSpot extends ParkingSpot {
     @Override
     protected boolean canParkVehicle(Vehicle v)
     {
-        return v.getVehicleType() == VehicleType.HANDICAPPED;
+        return (v instanceof HandicappedVehicle);
     }
 }

@@ -50,7 +50,7 @@ public abstract class ParkingSpot {
         return spotId;
     }
     
-    public double getHourlyRte()
+    public double getHourlyRate()
     {
         return hourlyRate;
     }
