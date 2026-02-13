@@ -58,7 +58,7 @@ public class TicketService {
 
         freeParkingSpot(ticket.getSpotId().getSpotId());
 
-        return new Receipt(ticket, parkingFee, fineToPay, totalPaid, paymentMethod, remainingBalance);
+        return new Receipt(ticket, parkingFee, fineToPay, totalPaid, paymentMethod);
     }
     
     public List<RevenueRecord> getRevenueReport() {

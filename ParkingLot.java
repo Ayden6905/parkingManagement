@@ -178,7 +178,7 @@ public class ParkingLot {
         t.closeTicket(exitTime, parkingFee, fineAmount, totalPaid, paymentMethod);
 
         // create receipt
-        return new Receipt(t, parkingFee, fineAmount, totalPaid, paymentMethod, remainingBalance);
+        return new Receipt(t, parkingFee, fineAmount, totalPaid, t.getPaymentMethod());
     }
     
     public ParkingSpot findSpotById(String spotId)
