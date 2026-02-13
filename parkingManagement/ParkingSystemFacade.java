@@ -52,8 +52,20 @@ public class ParkingSystemFacade {
         }
     }
     
-    public String handleVehicleEntry(String plate, String type) {
-        return "Ticket Generated: T-" + plate;
+    public String handleVehicleEntry(String plate, String type, String chosenSpot) {
+        if (Ticket.findActiveByPlate(plate) != null) {
+            return "Error: Vehice with plate" + plate + " is already inside the parking lot.";
+        }
+        
+        ticketService.createTicket(plate, chosenSpot);
+
+        Ticket ticket = Ticket.findActiveByPlate(plate);
+
+        if (ticket != null) {
+            return ticket.generateFormattedTicket(type);
+        }
+
+        return "Error: Failed to generate ticket record.";
     }
     
     public Receipt handleVehicleExit(String plate) {
@@ -93,6 +105,26 @@ public class ParkingSystemFacade {
                 totalPayment
         );
     }
+    
+    public java.util.List<String> getAvailableSpots() {
+        java.util.List<String> spots = new java.util.ArrayList<>();
+        
+        String sql = "SELECT spotId FROM parkingSpot WHERE status='Available'";
+        
+        try (Connection conn = DatabaseConfig.getConnection();
+            PreparedStatement ps = conn.prepareStatement(sql);
+            ResultSet rs = ps.executeQuery()) {
+
+            while (rs.next()) {
+                spots.add(rs.getString("spotId"));
+            }
+
+        } catch (SQLException e) {
+            System.out.println("Error fetching spots: " + e.getMessage());
+        }
+
+        return spots;
+    }    
     
     public Receipt processPayment(String plate, double hourlyRate, double fineToPay, String method) {
         return ticketService.closeTicketAndPay(plate, hourlyRate, fineToPay, method);

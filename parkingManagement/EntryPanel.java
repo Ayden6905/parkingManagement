@@ -10,6 +10,7 @@ package parkingManagement;
  */
 import javax.swing.*;
 import java.awt.*;
+import java.util.List;
 
 public class EntryPanel extends JPanel {
     private MainFrame mainFrame; // To allow going back to home
@@ -48,12 +49,67 @@ public class EntryPanel extends JPanel {
         gbc.gridy = 4; add(btnBack, gbc);
 
         // Member 4: Connect UI to Facade
-        btnPark.addActionListener(e -> {
-            String plate = plateField.getText();
+//        btnPark.addActionListener(e -> {
+//            String plate = plateField.getText().trim().toUpperCase();
+//            String type = (String) typeCombo.getSelectedItem();
+//            String ticketResult = facade.handleVehicleEntry(plate, type);
+//            
+//            JTextArea textArea = new JTextArea(ticketResult);
+//            JOptionPane.showMessageDialog(this, new JScrollPane(textArea), "Ticket Issued", JOptionPane.PLAIN_MESSAGE);
+//        });
+//        
+//        List<String> spots = facade.getAvailableSpots();
+//        String selectedSpot = (String) JOptionPane.showInputDialog(
+//        this,
+//                "Select Available Spot:",
+//                "Choose Spot",
+//                JOptionPane.PLAIN_MESSAGE,
+//                null,
+//                spots.toArray(),
+//                spots.get(0)
+//        );
+//
+//        if (selectedSpot != null) {
+//        String ticketResult = facade.handleVehicleEntry(plate, type, selectedSpot);
+//        }
+        
+          btnPark.addActionListener(e -> {
+            String plate = plateField.getText().trim().toUpperCase();
             String type = (String) typeCombo.getSelectedItem();
-            String result = facade.handleVehicleEntry(plate, type);
-            JOptionPane.showMessageDialog(this, result);
+
+            if (plate.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Please enter license plate.");
+                return;
+            }
+
+            List<String> spots = facade.getAvailableSpots();
+
+            if (spots.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "No available spots.");
+                return;
+            }
+
+            String selectedSpot = (String) JOptionPane.showInputDialog(
+                    this,
+                    "Select Available Spot:",
+                    "Choose Spot",
+                    JOptionPane.PLAIN_MESSAGE,
+                    null,
+                    spots.toArray(),
+                    spots.get(0)
+            );
+
+            if (selectedSpot != null) {
+                String ticketResult = facade.handleVehicleEntry(plate, type, selectedSpot);
+
+                JTextArea textArea = new JTextArea(ticketResult);
+                JOptionPane.showMessageDialog(this,
+                        new JScrollPane(textArea),
+                        "Ticket Issued",
+                        JOptionPane.PLAIN_MESSAGE);
+            }
         });
+
 
         // Navigation back to your Main Screen
         btnBack.addActionListener(e -> mainFrame.showHome());

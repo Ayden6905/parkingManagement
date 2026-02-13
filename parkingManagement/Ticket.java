@@ -11,6 +11,7 @@ package parkingManagement;
 import java.sql.*;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 public class Ticket {
     private String ticketId;
@@ -53,20 +54,44 @@ public class Ticket {
     
     //db operation
     public void saveEntry() {
-        String sql = "INSERT INTO ticket (ticketId, licensePlate, spotId, entryTime) VALUES (?, ?, ?, ?)";
+        String sqlVehicle = "INSERT INTO vehicle (licensePlate, vehicleType) VALUES (?, ?)";
+        String sqlTicket = "INSERT INTO ticket (ticketId, licensePlate, spotId, entryTime) VALUES (?, ?, ?, ?)";
         
-        try (Connection conn = DatabaseConfig.getConnection();
-                PreparedStatement ps = conn.prepareStatement(sql)) {
-            
-            ps.setString(1, ticketId);
-            ps.setString(2, licensePlate);
-            ps.setString(3, spotId);
-            ps.setTimestamp(4, Timestamp.valueOf(entryTime));
-            ps.executeUpdate();
+        try (Connection conn = DatabaseConfig.getConnection()) {
+            try (PreparedStatement psCheck = conn.prepareStatement(
+                "SELECT licensePlate FROM vehicle WHERE licensePlate = ?")) {
+
+            psCheck.setString(1, this.licensePlate);
+            ResultSet rs = psCheck.executeQuery();
+
+            if (!rs.next()) {
+                try (PreparedStatement psV = conn.prepareStatement(sqlVehicle)) {
+                    psV.setString(1, this.licensePlate);
+                    psV.setString(2, "Car"); 
+                    psV.executeUpdate();
+                }
+            }
         }
         
+        String updateSpot = "UPDATE parkingSpot SET status='Occupied' WHERE spotId=?";
+
+            try (PreparedStatement psUpdate = conn.prepareStatement(updateSpot)) {
+                psUpdate.setString(1, spotId);
+                psUpdate.executeUpdate();
+        }
+
+            try (PreparedStatement psT = conn.prepareStatement(sqlTicket)) {
+                psT.setString(1, ticketId);
+                psT.setString(2, licensePlate);
+                psT.setString(3, spotId);
+                psT.setTimestamp(4, Timestamp.valueOf(entryTime));
+                psT.executeUpdate();
+                System.out.println("Success: Ticket saved to database.");
+            }
+        }
         catch (SQLException e) {
-            System.out.println("Error saving ticket entry: " + e.getMessage());       
+            System.out.println("Database Error: " + e.getMessage()); 
+            e.printStackTrace();
         }
     }
     
@@ -120,6 +145,26 @@ public class Ticket {
             System.out.println("Error finding active ticket: " + e.getMessage());
         }
         return null;
+    }
+    
+    public String generateFormattedTicket(String vehicleType) {
+        java.time.format.DateTimeFormatter timeFmt = java.time.format.DateTimeFormatter.ofPattern("h:mm a");
+        
+        long timestamp = System.currentTimeMillis();
+        String headerId = "T-" + this.licensePlate + "-" + timestamp;
+        
+        String level = "L3"; //dummy for now
+        
+        return "==========================================\n" +
+               "          " + headerId + "\n" +
+               "     ex: " + vehicleType.toLowerCase() + "-" + this.licensePlate + "-1410\n" +
+               "==========================================\n\n" +
+               "   Entry Time:     " + this.entryTime.format(timeFmt) + "\n" +
+               "   Vehicle Type:   " + vehicleType + "\n" +
+               "   Plate Number:   " + this.licensePlate + "\n" +
+               "   Assigned Level: " + level + "\n" +
+               "   Assigned Spot:  " + this.spotId + "\n\n" +
+               "==========================================";
     }
     
     //getters
