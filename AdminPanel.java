@@ -151,14 +151,80 @@ private JLabel createCountLabel() {
   
   
     // --- TAB 2: REVENUE SUMMARY ---
-    private JPanel createRevenuePanel() {
-        JPanel panel = new JPanel(new BorderLayout());
-        JButton btnRefresh = new JButton("Generate Latest Report");
-        panel.add(btnRefresh, BorderLayout.NORTH);
-        
-        btnRefresh.addActionListener(e -> showRevenueReport());
-        return panel;
+   // --- TAB 2: REVENUE SUMMARY ---
+private JPanel createRevenuePanel() {
+    JPanel panel = new JPanel(new GridBagLayout());
+    panel.setBackground(new Color(245, 245, 245));
+    GridBagConstraints gbc = new GridBagConstraints();
+    gbc.insets = new Insets(15, 15, 15, 15);
+    gbc.fill = GridBagConstraints.HORIZONTAL;
+
+    // 1. General Revenue Button
+    JButton btnGeneralReport = new JButton("📊 View General Revenue Report");
+    btnGeneralReport.setFont(new Font("SansSerif", Font.BOLD, 13));
+    btnGeneralReport.addActionListener(e -> showRevenueReport());
+
+    // 2. Fine Analysis Button
+    JButton btnFineReport = new JButton("💸 View Fine Strategy Analysis");
+    btnFineReport.setFont(new Font("SansSerif", Font.BOLD, 13));
+    btnFineReport.addActionListener(e -> showFineStrategyReport());
+
+    gbc.gridy = 0;
+    panel.add(btnGeneralReport, gbc);
+    
+    gbc.gridy = 1;
+    panel.add(btnFineReport, gbc);
+
+    return panel;
+}
+
+private void showFineStrategyReport() {
+    // 1. Get Data from Facade
+    List<Object[]> fineStats = facade.getFineRevenueReport();
+    List<Object[]> topViolators = facade.getTopFineViolators();
+
+    if (fineStats.isEmpty()) {
+        JOptionPane.showMessageDialog(this, "No fine records found yet.");
+        return;
     }
+
+    // 2. Setup the Strategy Breakdown Table
+    String[] statCols = {"Fine Scheme", "Vehicles Fined", "Total Fine Revenue (RM)", "Avg. Fine (RM)"};
+    DefaultTableModel statModel = new DefaultTableModel(statCols, 0);
+    for (Object[] row : fineStats) statModel.addRow(row);
+    JTable statTable = new JTable(statModel);
+
+    // 3. Setup the Top Violators Table
+    String[] violatorCols = {"Plate Number", "Scheme Used", "Total Duration", "Fine Amount (RM)"};
+    DefaultTableModel violatorModel = new DefaultTableModel(violatorCols, 0);
+    for (Object[] row : topViolators) violatorModel.addRow(row);
+    JTable violatorTable = new JTable(violatorModel);
+
+    // 4. NEW: Strategy Legend (Explaining Progressive vs Others)
+    JPanel legendPanel = new JPanel(new GridLayout(3, 1));
+    legendPanel.setBorder(BorderFactory.createTitledBorder("Strategy Logic Applied:"));
+    legendPanel.add(new JLabel(" • Fixed: Flat RM 50.00"));
+    legendPanel.add(new JLabel(" • Hourly: RM 10.00 per hour overstayed"));
+    legendPanel.add(new JLabel(" • Progressive: RM 10 (1st hr) -> RM 20 (2nd hr) -> RM 40 (3rd hr+)"));
+
+    // 5. Layout for the Popup
+    JPanel container = new JPanel();
+    container.setLayout(new BoxLayout(container, BoxLayout.Y_AXIS));
+    
+    // Add sections with padding
+    container.add(new JLabel("💰 REVENUE BY FINE STRATEGY"));
+    container.add(new JScrollPane(statTable));
+    container.add(Box.createRigidArea(new Dimension(0, 15)));
+    
+    container.add(new JLabel("🚩 TOP 5 HIGHEST FINES ISSUED"));
+    container.add(new JScrollPane(violatorTable));
+    container.add(Box.createRigidArea(new Dimension(0, 15)));
+    
+    container.add(legendPanel);
+
+    container.setPreferredSize(new Dimension(650, 550));
+    JOptionPane.showMessageDialog(this, container, "Fine Strategy Analytics", JOptionPane.PLAIN_MESSAGE);
+}
 
     // --- TAB 3: LIVE VEHICLE LIST ---
     private JPanel createLiveVehiclePanel() {

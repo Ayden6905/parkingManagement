@@ -320,4 +320,56 @@ public class ParkingSystemFacade {
     }
     return list;
 }
+    
+    // --- FINE ANALYTICS REPORT ---
+public List<Object[]> getFineRevenueReport() {
+    List<Object[]> report = new ArrayList<>();
+    // This query calculates how much money was made from fines under each specific rule
+    String sql = "SELECT fineScheme, COUNT(*) as totalFinedVehicles, " +
+                 "SUM(fineAmount) as totalFineRevenue, AVG(fineAmount) as averageFine " +
+                 "FROM ticket WHERE exitTime IS NOT NULL AND fineAmount > 0 " +
+                 "GROUP BY fineScheme";
+
+    try (Connection conn = DatabaseConfig.getConnection();
+         PreparedStatement ps = conn.prepareStatement(sql);
+         ResultSet rs = ps.executeQuery()) {
+
+        while (rs.next()) {
+            report.add(new Object[]{
+                rs.getString("fineScheme"),              // "Fixed" or "Hourly"
+                rs.getInt("totalFinedVehicles"),         // Number of cars caught
+                String.format("%.2f", rs.getDouble("totalFineRevenue")), // Total money
+                String.format("%.2f", rs.getDouble("averageFine"))       // Average per car
+            });
+        }
+    } catch (SQLException e) {
+        e.printStackTrace();
+    }
+    return report;
+}
+
+// --- TOP 5 HIGHEST FINES (The "Violators" List) ---
+public List<Object[]> getTopFineViolators() {
+    List<Object[]> violators = new ArrayList<>();
+    String sql = "SELECT licensePlate, fineScheme, totalHours, fineAmount " +
+                 "FROM ticket WHERE fineAmount > 0 " +
+                 "ORDER BY fineAmount DESC LIMIT 5";
+
+    try (Connection conn = DatabaseConfig.getConnection();
+         PreparedStatement ps = conn.prepareStatement(sql);
+         ResultSet rs = ps.executeQuery()) {
+
+        while (rs.next()) {
+            violators.add(new Object[]{
+                rs.getString("licensePlate"),
+                rs.getString("fineScheme"),
+                rs.getInt("totalHours") + " hrs",
+                String.format("%.2f", rs.getDouble("fineAmount"))
+            });
+        }
+    } catch (SQLException e) {
+        e.printStackTrace();
+    }
+    return violators;
+}
 }
