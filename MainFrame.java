@@ -40,6 +40,7 @@ public class MainFrame extends JFrame {
         // Change "Admin" to "AdminDashboard"
         mainContainer.add(new AdminPanel(facade, this), "AdminDashboard");
         mainContainer.add(new AdminLogin(facade, this), "AdminLogin");
+        mainContainer.add(new ReservationPanel(facade, this), "Reservation");
 
         add(mainContainer);
     }
@@ -94,7 +95,9 @@ public class MainFrame extends JFrame {
     cardLayout.show(mainContainer, panelName);
     }
 
-   
+    public void showReservation() {
+        showPanel("Reservation");
+    }
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> new MainFrame().setVisible(true));

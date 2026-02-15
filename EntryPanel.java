@@ -39,9 +39,13 @@ public class EntryPanel extends JPanel {
         String[] types = {"Car", "Motorcycle", "SUV", "Handicapped"}; 
         typeCombo = new JComboBox<>(types);
         
-        //newly added
+        //handicapped card holder
         handicappedCheck = new JCheckBox("Handicapped driver (card holder)");
         handicappedCheck.setBackground(Color.WHITE);
+        
+        //reservation button
+        JButton btnReserve = new JButton("Reserve Parking Spot");
+        btnReserve.addActionListener(e -> mainFrame.showReservation());
         
         JButton btnPark = new JButton("Assign Spot & Park");
         JButton btnBack = new JButton("Back to Main Menu");
@@ -57,10 +61,13 @@ public class EntryPanel extends JPanel {
         gbc.gridx = 1; add(typeCombo, gbc);
 
         gbc.gridy = 3; gbc.gridx = 0; gbc.gridwidth = 2; 
-        add(handicappedCheck, gbc);
+        add(handicappedCheck, gbc);      
         
-        gbc.gridy = 4; add(btnPark, gbc);
-        gbc.gridy = 5; add(btnBack, gbc);
+        gbc.gridy = 4;
+        add(btnReserve, gbc);
+        
+        gbc.gridy = 5; add(btnPark, gbc);
+        gbc.gridy = 6; add(btnBack, gbc);
         
         btnBack.addActionListener(e -> mainFrame.showHome());
         
@@ -74,7 +81,7 @@ public class EntryPanel extends JPanel {
                 return;
             }
                
-            List<String> spots = facade.getAvailableSpotsFor(type, isCardHolder);
+            List<String> spots = facade.getAvailableSpotsFor(plateField.getText().trim(), type, handicappedCheck.isSelected());
             if (spots.isEmpty()) {
                 JOptionPane.showMessageDialog(this, "No available spots.");
                 return;

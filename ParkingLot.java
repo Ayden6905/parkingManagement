@@ -232,4 +232,54 @@ public class ParkingLot {
         ParkingRepository repo = new ParkingRepository();
         return repo.getAllParkingSpots();
     }
+    
+    private boolean hasAnyActiveReservationForPlate(String plate, LocalDateTime now) {
+
+        if (plate == null) {
+            return false;
+        }
+
+        plate = plate.trim();
+        if (plate.isEmpty()) {
+            return false;
+        }
+
+        for (Reservation r : reservations) {
+
+            if (r.getLicensePlate().equalsIgnoreCase(plate)
+                    && r.getStatus() == ReservationStatus.ACTIVE
+                    && !now.isBefore(r.getStartTime())
+                    && !now.isAfter(r.getEndTime())) {
+
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    public List<ParkingSpot> getAvailableSpots(Vehicle v, String plate) {
+
+        List<ParkingSpot> result = new ArrayList<>();
+        LocalDateTime now = LocalDateTime.now();
+
+        boolean hasReservation = hasAnyActiveReservationForPlate(plate, now);
+
+        for (Floor floor : floors) {
+            for (ParkingSpot spot : floor.getAllSpots()) {
+
+                if (!spot.isAvailable()) {
+                    continue;
+                }
+                if (!spot.canParkVehicle(v)) {
+                    continue;
+                }
+                
+                if (spot instanceof ReservedSpot && !hasReservation) {
+                    continue;
+                }
+                result.add(spot);
+            }
+        }
+        return result;
+    }
 }

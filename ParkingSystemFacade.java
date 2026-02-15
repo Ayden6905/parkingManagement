@@ -180,24 +180,15 @@ public class ParkingSystemFacade {
     }
 
     //available spots
-    public List<String> getAvailableSpotsFor(String vehicleType, boolean isHandicappedCardHolder) {
-
+    public List<String> getAvailableSpotsFor(String plate, String vehicleType, boolean cardHolder) {
         Vehicle v = vehicleFactory.createVehicle(vehicleType, "TEMP");
-        v.setHandicappedCardHolder(isHandicappedCardHolder);
+        v.setHandicappedCardHolder(cardHolder);
 
-        List<String> result = new ArrayList<>();
-
-        for (ParkingSpot s : ParkingLot.getInstance().getAllSpots()) {
-
-            if (s.isOccupied()) {
-                continue;
-            }
-
-            if (s.canParkVehicle(v)) {
-                result.add(s.getSpotId());
-            }
+        List<String> ids = new ArrayList<>();
+        for (ParkingSpot s : ParkingLot.getInstance().getAvailableSpots(v, plate)) {
+            ids.add(s.getSpotId());
         }
-        return result;
+        return ids;
     }
 
     //payment processing

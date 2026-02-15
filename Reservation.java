@@ -54,4 +54,24 @@ public class Reservation {
     {
         this.status = ReservationStatus.USED;
     }
+    
+    public String getReservationId() {
+        return reservationId;
+    }
+
+    public ReservedSpot getSpotId() {
+        return spotId;
+    }
+
+    public LocalDateTime getStartTime() {
+        return startTime;
+    }
+
+    public LocalDateTime getEndTime() {
+        return endTime;
+    }
+
+    public ReservationStatus getStatus() {
+        return status;
+    }
 }
