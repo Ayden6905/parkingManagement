@@ -9,6 +9,8 @@
  */
 import java.sql.*;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
 
 public class ParkingRepository {
 
@@ -96,5 +98,49 @@ public class ParkingRepository {
                 try { conn.setAutoCommit(true); conn.close(); } catch (SQLException e) { e.printStackTrace(); }
             }
         }
+    }
+    
+    public List<ParkingSpot> getAllParkingSpots() {
+
+        List<ParkingSpot> list = new ArrayList<>();
+        String sql = "SELECT spotId, floorNumber, spotType, status, hourlyRate FROM parkingSpot";
+
+        try (Connection conn = DatabaseConfig.getConnection(); PreparedStatement ps = conn.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
+
+            while (rs.next()) {
+
+                String spotId = rs.getString("spotId");
+                String spotType = rs.getString("spotType");
+                String statusStr = rs.getString("status");             
+                int floorNumber = rs.getInt("floorNumber");
+
+                ParkingSpot spot;
+
+                switch (spotType.toUpperCase()) {
+                    case "COMPACT":
+                        spot = new CompactSpot(spotId, floorNumber);
+                        break;
+                    case "REGULAR":
+                        spot = new RegularSpot(spotId, floorNumber);
+                        break;
+                    case "HANDICAPPED":
+                        spot = new HandicappedSpot(spotId, floorNumber);
+                        break;
+                    case "RESERVED":
+                        spot = new ReservedSpot(spotId, floorNumber);
+                        break;
+                    default:
+                        throw new RuntimeException("Unknown spot type: " + spotType);
+                }
+
+                spot.setStatus(SpotStatus.valueOf(statusStr.toUpperCase()));
+                list.add(spot);
+            }
+
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+
+        return list;
     }
 }

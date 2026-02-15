@@ -14,8 +14,8 @@ public class HandicappedSpot extends ParkingSpot {
     }
     
     @Override
-    protected boolean canParkVehicle(Vehicle v)
+    public boolean canParkVehicle(Vehicle v)
     {
-        return v.getVehicleType() == VehicleType.HANDICAPPED;
+        return v.getVehicleType() == VehicleType.HANDICAPPED || v.isHandicappedCardHolder();
     }
 }

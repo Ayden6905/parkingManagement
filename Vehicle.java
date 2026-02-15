@@ -17,6 +17,9 @@ public abstract class Vehicle {
     private final LocalDateTime entryTime;
     private LocalDateTime exitTime;
     private double outstandingFines;
+    
+    //newly added
+    private boolean handicappedCardHolder;
 
     protected Vehicle(String licensePlate, VehicleType vehicleType) {
         this.licensePlate = licensePlate;
@@ -58,5 +61,16 @@ public abstract class Vehicle {
         if (amount > 0) {
             this.outstandingFines += amount;
         }
+    }        
+    
+    //newly added
+    public boolean isHandicappedCardHolder()
+    {
+        return handicappedCardHolder;
+    }
+    
+    public void setHandicappedCardHolder (boolean handicappedCardHolder)
+    {
+        this.handicappedCardHolder = handicappedCardHolder;
     }
 }

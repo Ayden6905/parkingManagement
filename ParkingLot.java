@@ -227,4 +227,9 @@ public class ParkingLot {
     public void setFineStrategy(FineStrategy strategy)
     {
     }
+    
+    public List<ParkingSpot> getAllSpots() {
+        ParkingRepository repo = new ParkingRepository();
+        return repo.getAllParkingSpots();
+    }
 }

@@ -17,6 +17,7 @@ public class EntryPanel extends JPanel {
     
     private JTextField plateField;
     private JComboBox<String> typeCombo;
+    private JCheckBox handicappedCheck; //check if handicapped or not
 
     public EntryPanel(ParkingSystemFacade facade, MainFrame mainFrame) {
         this.facade = facade;
@@ -38,6 +39,10 @@ public class EntryPanel extends JPanel {
         String[] types = {"Car", "Motorcycle", "SUV", "Handicapped"}; 
         typeCombo = new JComboBox<>(types);
         
+        //newly added
+        handicappedCheck = new JCheckBox("Handicapped driver (card holder)");
+        handicappedCheck.setBackground(Color.WHITE);
+        
         JButton btnPark = new JButton("Assign Spot & Park");
         JButton btnBack = new JButton("Back to Main Menu");
 
@@ -51,21 +56,25 @@ public class EntryPanel extends JPanel {
         gbc.gridy = 2; gbc.gridx = 0; add(lblType, gbc);
         gbc.gridx = 1; add(typeCombo, gbc);
 
-        gbc.gridy = 3; gbc.gridx = 0; gbc.gridwidth = 2; add(btnPark, gbc);
-        gbc.gridy = 4; add(btnBack, gbc);
+        gbc.gridy = 3; gbc.gridx = 0; gbc.gridwidth = 2; 
+        add(handicappedCheck, gbc);
         
-        btnPark.addActionListener(e -> mainFrame.showHome());
+        gbc.gridy = 4; add(btnPark, gbc);
+        gbc.gridy = 5; add(btnBack, gbc);
+        
+        btnBack.addActionListener(e -> mainFrame.showHome());
         
         btnPark.addActionListener(e -> {
             String plate = plateField.getText().trim().toUpperCase();
             String type = (String) typeCombo.getSelectedItem();
+            boolean isCardHolder = handicappedCheck.isSelected();
 
             if (plate.isEmpty()) {
                 JOptionPane.showMessageDialog(this, "Please enter license plate.");
                 return;
             }
-
-            List<String> spots = facade.getAvailableSpots();
+               
+            List<String> spots = facade.getAvailableSpotsFor(type, isCardHolder);
             if (spots.isEmpty()) {
                 JOptionPane.showMessageDialog(this, "No available spots.");
                 return;
@@ -82,7 +91,7 @@ public class EntryPanel extends JPanel {
             );
 
             if (selectedSpot != null) {
-                String ticketResult = facade.handleVehicleEntry(plate, type, selectedSpot);
+                String ticketResult = facade.handleVehicleEntry(plate, type, selectedSpot, isCardHolder);
 
                 JTextArea textArea = new JTextArea(ticketResult);
                 textArea.setEditable(false);
@@ -93,8 +102,9 @@ public class EntryPanel extends JPanel {
                 
                 if (ticketResult.startsWith("Success")) {
                     plateField.setText("");
+                    handicappedCheck.setSelected(false);
                 }
             }
-        });
+        });                
     }
 }
