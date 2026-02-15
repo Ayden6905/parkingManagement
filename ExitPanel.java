@@ -44,9 +44,15 @@ public class ExitPanel extends JPanel {
             }
         });
         
+        JButton btnBack = new JButton("Back to Main Menu");
+        
+         btnBack.addActionListener(e -> mainFrame.showHome());
+        
         panel.add(new JLabel("Enter License Plate: "));
         panel.add(plateField);
         panel.add(btnProceed);
+        panel.add(btnBack);
+        
         return panel;
     }
     

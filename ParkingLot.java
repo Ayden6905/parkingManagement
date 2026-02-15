@@ -137,29 +137,7 @@ public class ParkingLot {
         return null;
     }
     
-    public Ticket parkVehicle(Vehicle v, ParkingSpot s)
-    {
-        if (v == null || s == null) return null;
-        
-        // reserved spot must have reservation
-        if (s instanceof ReservedSpot)
-        {
-            Reservation r = findValidReservationFor(v, s, LocalDateTime.now());
-            if (r == null) return null;
-            r.markUsed();
-        }
-        
-        if (!s.isAvailable()) return null;
-        if (!s.canParkVehicle(v)) return null;
-        
-        s.parkVehicle(v);
-        
-        return new Ticket(
-                "T-" + v.getLicensePlate() + "-" + System.currentTimeMillis(),
-                v, s, LocalDateTime.now()
-        );
-    }
-    
+     
     public Receipt exitVehicle(String licensePlate) 
 {
         // find the ticket
@@ -227,4 +205,25 @@ public class ParkingLot {
     public void setFineStrategy(FineStrategy strategy)
     {
     }
+    
+    // Update the method signature to accept 'scheme'
+public Ticket parkVehicle(Vehicle v, ParkingSpot s, String scheme) { 
+    if (v == null || s == null) return null;
+    
+    // ... your existing reservation and availability checks ...
+    
+    if (!s.isAvailable()) return null;
+    if (!s.canParkVehicle(v)) return null;
+    
+    s.parkVehicle(v);
+    
+    // FIX: Pass the 'scheme' as the 5th argument here
+    return new Ticket(
+            "T-" + v.getLicensePlate() + "-" + System.currentTimeMillis(),
+            v, 
+            s, 
+            LocalDateTime.now(),
+            scheme // <--- This was missing!
+    );
+}
 }

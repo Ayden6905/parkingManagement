@@ -54,7 +54,7 @@ public class EntryPanel extends JPanel {
         gbc.gridy = 3; gbc.gridx = 0; gbc.gridwidth = 2; add(btnPark, gbc);
         gbc.gridy = 4; add(btnBack, gbc);
         
-        btnPark.addActionListener(e -> mainFrame.showHome());
+        btnBack.addActionListener(e -> mainFrame.showHome());
         
         btnPark.addActionListener(e -> {
             String plate = plateField.getText().trim().toUpperCase();
@@ -91,8 +91,9 @@ public class EntryPanel extends JPanel {
                         "Ticket Issued",
                         JOptionPane.PLAIN_MESSAGE);
                 
-                if (ticketResult.startsWith("Success")) {
-                    plateField.setText("");
+                if (!ticketResult.startsWith("Error")) {
+            plateField.setText("");
+            mainFrame.showHome(); // Take them back after parking
                 }
             }
         });

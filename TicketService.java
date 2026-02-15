@@ -22,44 +22,57 @@ public class TicketService {
         this.vehicleFactory = new VehicleFactory();
     }
     
-    public String createTicket(String plate, String vehicleType, String spotId) {
-        Vehicle vehicle = vehicleFactory.createVehicle(vehicleType, plate);
-        
-        ParkingSpot spot = ParkingLot.getInstance().findSpotById(spotId);
-        if (spot == null) {
-            throw new RuntimeException("Spot not found: " + spotId);
-        }
-        
-        String ticketId = "T-" + plate + "-" + System.currentTimeMillis();
-        Ticket ticket = new Ticket(ticketId, vehicle, spot, LocalDateTime.now());
-        ticket.saveEntry();
-
-        return ticketId;
+    public String createTicket(String plate, String vehicleType, String spotId, String scheme) {
+    // 1. Create the vehicle object using your factory
+    // Ensure vehicleFactory is already initialized in this class
+    Vehicle vehicle = vehicleFactory.createVehicle(vehicleType, plate);
+    
+    // 2. Find the parking spot via the Singleton ParkingLot
+    ParkingSpot spot = ParkingLot.getInstance().findSpotById(spotId);
+    if (spot == null) {
+        throw new RuntimeException("Spot not found in system: " + spotId);
     }
+    
+    // 3. Generate a unique Ticket ID
+    String ticketId = "T-" + plate + "-" + System.currentTimeMillis();
+    
+    // 4. Instantiate Ticket with the NEW scheme parameter
+    // This locks the 'Fixed' or 'Hourly' rule to this specific vehicle row
+    Ticket ticket = new Ticket(ticketId, vehicle, spot, LocalDateTime.now(), scheme);
+    
+    // 5. Save to the database (this triggers the SQL INSERT with fineScheme)
+    ticket.saveEntry();
+
+    return ticketId;
+}
     
     public Receipt closeTicketAndPay(String plate,
                                  double hourlyRate,
                                  double fineToPay,
                                  String paymentMethod) {
 
-        Ticket ticket = Ticket.findActiveByPlate(plate);
-        if (ticket == null) return null;
+    Ticket ticket = Ticket.findActiveByPlate(plate);
+    if (ticket == null) return null;
 
-        LocalDateTime exitTime = LocalDateTime.now();
-        int hours = ticket.calculateDurationHours();
-        double parkingFee = hours * hourlyRate;
-        double totalPaid = parkingFee + fineToPay;
-        double remainingBalance = 0.0; 
+    LocalDateTime exitTime = LocalDateTime.now();
+    
+    // Calculate final parking fee based on duration
+    int hours = ticket.calculateDurationHours(); 
+    double parkingFee = hours * hourlyRate;
+    double totalPaid = parkingFee + fineToPay;
 
-        ticket.closeTicket(exitTime, parkingFee, fineToPay, totalPaid, paymentMethod);
+    // 1. Update the ticket record in DB
+    ticket.closeTicket(exitTime, parkingFee, fineToPay, totalPaid, paymentMethod);
 
-        insertPayment(ticket.getTicketId(), totalPaid, paymentMethod);
-        insertReceipt(ticket.getTicketId(), parkingFee, fineToPay, totalPaid);
+    // 2. Log financial records
+    insertPayment(ticket.getTicketId(), totalPaid, paymentMethod);
+    insertReceipt(ticket.getTicketId(), parkingFee, fineToPay, totalPaid);
 
-        freeParkingSpot(ticket.getSpotId().getSpotId());
+    // 3. Make spot available again
+    freeParkingSpot(ticket.getSpotId().getSpotId());
 
-        return new Receipt(ticket, parkingFee, fineToPay, totalPaid, paymentMethod);
-    }
+    return new Receipt(ticket, parkingFee, fineToPay, totalPaid, paymentMethod);
+}
     
     public List<RevenueRecord> getRevenueReport() {
 

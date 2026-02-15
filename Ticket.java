@@ -22,14 +22,16 @@ public class Ticket {
     private double fineAmount;
     private double totalPaid;
     private String paymentMethod;
+    private String fineScheme;
    
     
     public Ticket(String ticketId, Vehicle licensePlate, ParkingSpot spotId, 
-            LocalDateTime entryTime) {
+            LocalDateTime entryTime, String  fineScheme) {
         this.ticketId = ticketId;
         this.licensePlate = licensePlate;
         this.spotId = spotId;
         this.entryTime = entryTime;
+        this.fineScheme = fineScheme;
         
         //default value used for entry ticket
         this.exitTime = null;
@@ -53,7 +55,7 @@ public class Ticket {
     
     public void saveEntry() {
         String sqlVehicle = "INSERT IGNORE INTO vehicle (licensePlate, vehicleType) VALUES (?, ?)";
-        String sqlTicket = "INSERT INTO ticket (ticketId, licensePlate, spotId, entryTime) VALUES (?, ?, ?, ?)";
+        String sqlTicket = "INSERT INTO ticket (ticketId, licensePlate, spotId, entryTime, fineScheme) VALUES (?, ?, ?, ?, ?)";
         String updateSpot = "UPDATE parkingSpot SET status='Occupied' WHERE spotId=?";
 
         try (Connection conn = DatabaseConfig.getConnection()) {
@@ -74,6 +76,7 @@ public class Ticket {
                 psTicket.setString(2, licensePlate.getLicensePlate());
                 psTicket.setString(3, spotId.getSpotId());
                 psTicket.setTimestamp(4, Timestamp.valueOf(entryTime));
+                psTicket.setString(5, fineScheme);
                 psTicket.executeUpdate();
             }
 
@@ -128,37 +131,40 @@ public class Ticket {
                 + "==========================================";
     }
     
-    public static Ticket findActiveByPlate(String plate)
-    {
-        String sql = "SELECT ticketId, licensePlate, spotId, entryTime "
+    // --- UPDATED FIND ACTIVE TICKET ---
+    // --- UPDATED FIND ACTIVE TICKET ---
+    public static Ticket findActiveByPlate(String plate) {
+        String sql = "SELECT ticketId, licensePlate, spotId, entryTime, fineScheme "
                 + "FROM ticket WHERE licensePlate=? AND exitTime IS NULL";
 
-        try (Connection conn = DatabaseConfig.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (Connection conn = DatabaseConfig.getConnection(); 
+             PreparedStatement ps = conn.prepareStatement(sql)) {
 
             ps.setString(1, plate);
 
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
+                    Vehicle v = new Car(rs.getString("licensePlate")); 
+                    ParkingSpot s = new RegularSpot(rs.getString("spotId"), 1); 
 
-                    // stub for now
-                    Vehicle v = new Car(rs.getString("licensePlate")); // or your Vehicle base constructor
-                    ParkingSpot s = new RegularSpot(rs.getString("spotId"), 1); // placeholder floor
-
+                    // Ensure the semicolon is present after the closing parenthesis below
                     return new Ticket(
                             rs.getString("ticketId"),
                             v,
                             s,
-                            rs.getTimestamp("entryTime").toLocalDateTime()
-                    );
+                            rs.getTimestamp("entryTime").toLocalDateTime(),
+                            rs.getString("fineScheme") 
+                    ); // <--- Added missing semicolon here
                 }
             }
-
         } catch (SQLException e) {
             System.out.println("Error finding active ticket: " + e.getMessage());
         }
-
         return null;
     }
+
+    // --- GETTER FOR SCHEME ---
+    public String getFineScheme() { return fineScheme; }
     
     public String getTicketId() { return ticketId; }
     public Vehicle getLicensePlate() { return licensePlate; }
