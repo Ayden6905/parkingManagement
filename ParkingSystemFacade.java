@@ -176,7 +176,7 @@ public double checkExistingDebt(String plate) {
     }
 
     //parking summary
-    public ParkingSummary getParkingSummary(String plate){
+    public ParkingSummary getParkingSummary(String plate) {
     Ticket ticket = Ticket.findActiveByPlate(plate);
     if (ticket == null) return null;
 
