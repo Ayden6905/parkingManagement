@@ -49,6 +49,17 @@ public class ParkingLot {
         addDefaultFloors(numberOfFloors);
     }
     
+    // ADDED: The missing method for your ReservationPanel
+    public void addReservation(Reservation r) {
+        if (r != null) {
+            this.reservations.add(r);
+        }
+    }
+    
+    public List<Reservation> getReservations() {
+        return reservations;
+    }
+    
     public void addFloor(Floor floor)
     {
         floors.add(floor);
@@ -74,28 +85,24 @@ public class ParkingLot {
     }
     
     //assigning spot type
-    private ParkingSpot createSpotByRow(String spotId, int floorNumber, int row)
-    {
-        switch (row)
-        {
-            case 1:
-                return new ReservedSpot(spotId, floorNumber);
-            case 2:
-                return new CompactSpot(spotId, floorNumber);
-            case 3:
-                return new HandicappedSpot(spotId, floorNumber);
-            case 4:
-                return new RegularSpot(spotId, floorNumber);
-            default:
-                throw new IllegalArgumentException("Invalid row: " + row);
-        }
+   private ParkingSpot createSpotByRow(String spotId, int floorNumber, int row) {
+    switch (row) {
+        case 1:
+            return new CompactSpot(spotId, floorNumber); // Row 1 is Compact in your DB
+        case 2:
+            return new ReservedSpot(spotId, floorNumber); // Row 2 is Reserved in your DB
+        case 3:
+            return new HandicappedSpot(spotId, floorNumber);
+        case 4:
+            return new RegularSpot(spotId, floorNumber);
+        case 5:
+            return new RegularSpot(spotId, floorNumber);
+        default:
+            throw new IllegalArgumentException("Invalid row: " + row);
     }
+}
     
-    // to let other to add reservations
-    public void addReservation(Reservation r)
-    {
-        reservations.add(r);
-    }
+    
     
     //search for spot
     public List<ParkingSpot> getAvailableSpots(Vehicle v)
@@ -138,56 +145,59 @@ public class ParkingLot {
     }
     
      
-    public Receipt exitVehicle(String licensePlate) 
-{
-        // find the ticket
-        Ticket t = Ticket.findActiveByPlate(licensePlate);
+public Receipt exitVehicle(String licensePlate) {
+    // 1. Find the active ticket
+    Ticket t = Ticket.findActiveByPlate(licensePlate);
 
-        if (t == null) return null; 
+    if (t == null) return null; 
 
-        // stub for now
-        LocalDateTime exitTime = LocalDateTime.now();
-        double parkingFee = 0.0;
-        double fineAmount = 0.0;
-        double totalPaid = 0.0;
-        String paymentMethod = "N/A";
-        double remainingBalance = 0.0;
-
-        t.closeTicket(exitTime, parkingFee, fineAmount, totalPaid, paymentMethod);
-
-        // create receipt
-        return new Receipt(t, parkingFee, fineAmount, totalPaid, t.getPaymentMethod());
+    // 2. Identify the spot and release it in memory
+    // This makes the spot available for the next car immediately in the UI
+    ParkingSpot spot = t.getSpot();
+    if (spot != null) {
+        spot.setStatus(SpotStatus.AVAILABLE);
+        
+        // 3. Release the spot in the Database
+        // This ensures the AdminPanel 'Refresh' shows the correct count
+        ParkingRepository repo = new ParkingRepository();
+        repo.releaseSpot(spot.getSpotId());
     }
+
+    // Existing logic
+    LocalDateTime exitTime = LocalDateTime.now();
+    double parkingFee = 0.0; // You can add your calculation logic here later
+    double fineAmount = 0.0;
+    double totalPaid = 0.0;
+    String paymentMethod = "N/A";
+
+    t.closeTicket(exitTime, parkingFee, fineAmount, totalPaid, paymentMethod);
+
+    // 4. Create receipt
+    return new Receipt(t, parkingFee, fineAmount, totalPaid, t.getPaymentMethod());
+}
+
     
-    public ParkingSpot findSpotById(String spotId)
-    {        
-        String sql = "SELECT spotId, floorNumber, spotType, hourlyRate FROM parkingSpot WHERE spotId = ?";
-
-        try (Connection conn = DatabaseConfig.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-
-            ps.setString(1, spotId);
-            ResultSet rs = ps.executeQuery();
-
-            if (rs.next()) {
-                String type = rs.getString("spotType");
-                int floor = rs.getInt("floorNumber");
-                double rate = rs.getDouble("hourlyRate");
-
-                switch(type.toUpperCase()) {
-                    case "REGULAR": return new RegularSpot(spotId, floor);
-                    case "HANDICAPPED": return new HandicappedSpot(spotId, floor);
-                    case "RESERVED": return new ReservedSpot(spotId, floor);
-                    case "COMPACT": return new CompactSpot(spotId, floor);
-                    default: throw new IllegalArgumentException("Unknown spot type: " + type);
-                }
+    public ParkingSpot findSpotById(String spotId) {
+    for (Floor floor : floors) {
+        for (ParkingSpot spot : floor.getAllSpots()) {
+            if (spot.getSpotId().equalsIgnoreCase(spotId)) {
+                return spot;
             }
-
-        } catch (SQLException e) {
-            System.out.println("Find spot error: " + e.getMessage());
         }
-        return null;
     }
+    return null;
+}
+    
+    public java.util.Map<String, ParkingSpot> getSpots() {
+    java.util.Map<String, ParkingSpot> allSpotsMap = new java.util.HashMap<>();
+    // This iterates through the floors you built in the constructor
+    for (Floor floor : floors) { 
+        for (ParkingSpot spot : floor.getAllSpots()) {
+            allSpotsMap.put(spot.getSpotId(), spot);
+        }
+    }
+    return allSpotsMap;
+}
     
     public double calculateOccupancy()
     {
@@ -239,6 +249,7 @@ public Ticket parkVehicle(Vehicle v, ParkingSpot s, String scheme) {
         return repo.getAllParkingSpots();
     }
     
+    
     private boolean hasAnyActiveReservationForPlate(String plate, LocalDateTime now) {
 
         if (plate == null) {
@@ -288,4 +299,6 @@ public Ticket parkVehicle(Vehicle v, ParkingSpot s, String scheme) {
         }
         return result;
     }
+    
+
 }

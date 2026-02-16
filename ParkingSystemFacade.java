@@ -42,71 +42,50 @@ public class ParkingSystemFacade {
 
     //admin login
     public boolean authenticateAdmin(String username, String password) {
-
-        String query = "SELECT * FROM admin WHERE username = ? AND password = ?";
-
-        try (Connection conn = DatabaseConfig.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(query)) {
-
-            pstmt.setString(1, username);
-            pstmt.setString(2, password);
-
-            try (ResultSet rs = pstmt.executeQuery()) {
-                return rs.next();
-            }
-
-        } catch (SQLException e) {
-            System.out.println("Login Error: " + e.getMessage());
-            return false;
+    // Make sure column names 'username' and 'password' match your DB exactly!
+    String sql = "SELECT * FROM admin WHERE username = ? AND password = ?";
+    try (Connection conn = DatabaseConfig.getConnection();
+         PreparedStatement ps = conn.prepareStatement(sql)) {
+        
+        ps.setString(1, username);
+        ps.setString(2, password);
+        
+        try (ResultSet rs = ps.executeQuery()) {
+            return rs.next(); // True if record exists
         }
+    } catch (SQLException e) {
+        e.printStackTrace();
+        return false;
     }
+}
 
     //vehicle entry
     public String handleVehicleEntry(String plate, String vehicleType, String spotId, boolean isHandicappedCardHolder) {
-
-        if (plate == null || plate.trim().isEmpty()) {
-            return "Error: License plate required.";
-        }
-
-        if (Ticket.findActiveByPlate(plate) != null) {
-            return "Error: Vehicle with plate " + plate + " is already inside.";
-        }
-
-        try {
-            ticketService.createTicket(plate, vehicleType, spotId, isHandicappedCardHolder);
-
-            Ticket ticket = Ticket.findActiveByPlate(plate);
-
-            if (ticket != null) {
-                return ticket.generateFormattedTicket();
-            }
-
-        } catch (Exception e) {
-            return "Error during vehicle entry: " + e.getMessage();
-        }
-
-        return "Error: Failed to generate ticket.";
+    if (plate == null || plate.trim().isEmpty()) {
+        return "Error: License plate required.";
     }
 
+    // Check if car is already inside
     if (Ticket.findActiveByPlate(plate) != null) {
         return "Error: Vehicle with plate " + plate + " is already inside.";
     }
 
     try {
-        // 1. THIS IS THE LINE: Check the database for old fines linked to this plate
-        double existingDebt = fineManager.getOutstandingFineByPlate(plate);
+        // 1. Check for old fines linked to this plate
+        double existingDebt = checkExistingDebt(plate);
 
-        // 2. Get the active strategy (Fixed/Hourly etc.)
+        // 2. Get the active strategy (Fixed/Progressive etc.)
         String activeScheme = getCurrentFineScheme(); 
 
-        // 3. PASS existingDebt HERE: This ensures the NEW ticket knows about the OLD debt
-        ticketService.createTicket(plate, vehicleType, spotId, activeScheme, existingDebt);
+        // 3. IMPORTANT: Your ticketService.createTicket MUST accept these extra parameters
+        // to save them into the DB 'ticket' table.
+        ticketService.createTicket(plate, vehicleType, spotId, isHandicappedCardHolder, activeScheme, existingDebt);
 
         Ticket ticket = Ticket.findActiveByPlate(plate);
         if (ticket != null) {
             String receipt = ticket.generateFormattedTicket();
             
-            // 4. Visual confirmation for the user
+            // 4. Visual confirmation for the UI
             if (existingDebt > 0) {
                 receipt += "\n⚠️ UNPAID FINES DETECTED: RM " + String.format("%.2f", existingDebt);
             }
@@ -114,7 +93,7 @@ public class ParkingSystemFacade {
         }
 
     } catch (Exception e) {
-        return "Error during entry: " + e.getMessage();
+        return "Error during vehicle entry: " + e.getMessage();
     }
     return "Error: Failed to generate ticket.";
 }
@@ -253,51 +232,53 @@ public double checkExistingDebt(String plate) {
     
  
     
-    public int getAvailableSpotsByFloor(int floor) {
-        int count = 0;
-        String sql = "SELECT COUNT(*) FROM parkingSpot WHERE floorNumber = ? AND status = 'Available'";
-        
-        try (Connection conn = DatabaseConfig.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            
-            ps.setInt(1, floor);
-            ResultSet rs = ps.executeQuery();
-            if (rs.next()) {
-                count = rs.getInt(1);
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return count;
-    }
+    // Inside ParkingSystemFacade.java
+public int getAvailableSpotsByFloor(int floorNum) {
+    ParkingRepository repo = new ParkingRepository();
+    return repo.getAvailableCountByFloor(floorNum);
+}
     
     public List<Object[]> getOccupancyDetailsByFloor(int floor) {
-        List<Object[]> details = new ArrayList<>(); // Now compiles with import above
-        String sql = "SELECT p.spotId, p.spotType, p.status, t.licensePlate, t.entryTime " +
-                     "FROM parkingSpot p " +
-                     "LEFT JOIN ticket t ON p.spotId = t.spotId AND t.exitTime IS NULL " +
-                     "WHERE p.floorNumber = ? " +
-                     "ORDER BY p.spotId ASC";
+    List<Object[]> details = new ArrayList<>();
+    // Updated SQL to join both ticket AND reservation tables
+    String sql = "SELECT p.spotId, p.spotType, p.status, " +
+                 "COALESCE(t.licensePlate, r.plate) AS vehicleNo, " + // Get plate from ticket or reservation
+                 "COALESCE(t.entryTime, r.startTime) AS time " +     // Get time from ticket or reservation
+                 "FROM parkingSpot p " +
+                 "LEFT JOIN ticket t ON p.spotId = t.spotId AND t.exitTime IS NULL " +
+                 "LEFT JOIN reservation r ON p.spotId = r.spotId AND r.status = 'ACTIVE' " +
+                 "WHERE p.floorNumber = ? " +
+                 "ORDER BY p.spotId ASC";
 
-        try (Connection conn = DatabaseConfig.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+    try (Connection conn = DatabaseConfig.getConnection();
+         PreparedStatement ps = conn.prepareStatement(sql)) {
+        
+        ps.setInt(1, floor);
+        ResultSet rs = ps.executeQuery();
+        
+        while (rs.next()) {
+            String dbStatus = rs.getString("status");
+            String vehicleNo = rs.getString("vehicleNo");
             
-            ps.setInt(1, floor);
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) {
-                details.add(new Object[]{
-                    rs.getString("spotId"),
-                    rs.getString("spotType"),
-                    rs.getString("status"),
-                    rs.getString("licensePlate") == null ? "-" : rs.getString("licensePlate"),
-                    rs.getTimestamp("entryTime") == null ? "-" : rs.getTimestamp("entryTime").toString()
-                });
+            // Logic: If there's no ticket but there IS a reservation, label it 'Reserved'
+            String displayStatus = dbStatus;
+            if (vehicleNo != null && !"Occupied".equalsIgnoreCase(dbStatus)) {
+                displayStatus = "Reserved";
             }
-        } catch (SQLException e) { 
-            e.printStackTrace(); 
+
+            details.add(new Object[]{
+                rs.getString("spotId"),
+                rs.getString("spotType"),
+                displayStatus,
+                vehicleNo == null ? "-" : vehicleNo,
+                rs.getTimestamp("time") == null ? "-" : rs.getTimestamp("time").toString()
+            });
         }
-        return details;
+    } catch (SQLException e) { 
+        e.printStackTrace(); 
     }
+    return details;
+}
     
     public List<Object[]> getVehiclesWithFines() {
     List<Object[]> data = new ArrayList<>();
@@ -477,10 +458,10 @@ public List<Object[]> getAllOutstandingFines() {
 
 public List<Object[]> getActiveFinesReport() {
     List<Object[]> report = new ArrayList<>();
-    // Added t.fineScheme to the SELECT statement
+    // Using LEFT JOIN ensures the ticket shows even if vehicle details are missing
     String sql = "SELECT t.licensePlate, v.vehicleType, t.spotId, t.entryTime, t.fineScheme, t.carriedOverFine " +
                  "FROM ticket t " +
-                 "JOIN vehicle v ON t.licensePlate = v.licensePlate " +
+                 "LEFT JOIN vehicle v ON t.licensePlate = v.licensePlate " + // Changed to LEFT JOIN
                  "WHERE t.exitTime IS NULL AND t.carriedOverFine > 0";
 
     try (Connection conn = DatabaseConfig.getConnection();

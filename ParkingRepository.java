@@ -103,7 +103,7 @@ public class ParkingRepository {
     public List<ParkingSpot> getAllParkingSpots() {
 
         List<ParkingSpot> list = new ArrayList<>();
-        String sql = "SELECT spotId, floorNumber, spotType, status, hourlyRate FROM parkingSpot";
+        String sql = "SELECT * FROM parkingSpot";
 
         try (Connection conn = DatabaseConfig.getConnection(); PreparedStatement ps = conn.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
 
@@ -164,4 +164,92 @@ public class ParkingRepository {
             return false;
         }
     }
+    
+    // Add this to ParkingRepository.java
+public boolean releaseSpot(String spotId) {
+    String sql = "UPDATE parkingSpot SET status = 'Available' WHERE spotId = ?";
+    
+    try (Connection conn = DatabaseConfig.getConnection();
+         PreparedStatement ps = conn.prepareStatement(sql)) {
+        
+        ps.setString(1, spotId);
+        return ps.executeUpdate() == 1;
+        
+    } catch (SQLException e) {
+        System.out.println("Error releasing spot: " + e.getMessage());
+        return false;
+    }
+} 
+
+// Add this to ParkingRepository.java
+public int getAvailableCountByFloor(int floorNum) {
+    // This query links reservations specifically to the floor of the spot
+    String sql = "SELECT COUNT(*) FROM parkingSpot p " +
+                 "WHERE p.floorNumber = ? " +
+                 "AND p.spotId NOT IN (SELECT t.spotId FROM ticket t WHERE t.exitTime IS NULL) " +
+                 "AND p.spotId NOT IN (SELECT r.spotId FROM reservation r " +
+                                    "JOIN parkingSpot ps ON r.spotId = ps.spotId " +
+                                    "WHERE r.status = 'ACTIVE' AND ps.floorNumber = ?)";
+    
+    try (Connection conn = DatabaseConfig.getConnection();
+         PreparedStatement ps = conn.prepareStatement(sql)) {
+        
+        ps.setInt(1, floorNum);
+        ps.setInt(2, floorNum); // Bind floorNum twice to satisfy both '?'
+        
+        try (ResultSet rs = ps.executeQuery()) {
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
+        }
+    } catch (SQLException e) {
+        e.printStackTrace();
+    }
+    return 0;
 }
+
+
+
+public List<Object[]> getOccupancyDetailsByFloor(int floor) {
+        List<Object[]> details = new ArrayList<>();
+        // Use COALESCE to pick the first non-null plate and time from either ticket or reservation
+        String sql = "SELECT p.spotId, p.spotType, p.status, " +
+                     "COALESCE(t.licensePlate, r.plate) AS vehicleNo, " + 
+                     "COALESCE(t.entryTime, r.startTime) AS time " +     
+                     "FROM parkingSpot p " +
+                     "LEFT JOIN ticket t ON p.spotId = t.spotId AND t.exitTime IS NULL " +
+                     "LEFT JOIN reservation r ON p.spotId = r.spotId AND r.status = 'ACTIVE' " +
+                     "WHERE p.floorNumber = ? " +
+                     "ORDER BY p.spotId ASC";
+
+        try (Connection conn = DatabaseConfig.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            
+            ps.setInt(1, floor);
+            ResultSet rs = ps.executeQuery();
+            
+            while (rs.next()) {
+                String dbStatus = rs.getString("status");
+                String vehicleNo = rs.getString("vehicleNo");
+                
+                // Determine display status: prioritize "Reserved" label if a booking exists
+                String displayStatus = dbStatus;
+                if (vehicleNo != null && !"Occupied".equalsIgnoreCase(dbStatus)) {
+                    displayStatus = "Reserved";
+                }
+
+                details.add(new Object[]{
+                    rs.getString("spotId"),
+                    rs.getString("spotType"),
+                    displayStatus,
+                    vehicleNo == null ? "-" : vehicleNo,
+                    rs.getTimestamp("time") == null ? "-" : rs.getTimestamp("time").toString()
+                });
+            }
+        } catch (SQLException e) { 
+            e.printStackTrace(); 
+        }
+        return details;
+    }
+}
+

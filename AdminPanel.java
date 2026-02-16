@@ -44,7 +44,6 @@ public class AdminPanel extends JPanel {
         
         tabbedPane.addTab("Occupancy Monitoring", createOccupancyPanel());
         tabbedPane.addTab("Revenue Summary", createRevenuePanel());
-        tabbedPane.addTab("Live Vehicle List", createLiveVehiclePanel());
         tabbedPane.addTab("Fine Overview", createFineOverviewPanel());
 
         add(tabbedPane, BorderLayout.CENTER);
@@ -226,13 +225,6 @@ private void showFineStrategyReport() {
     JOptionPane.showMessageDialog(this, container, "Fine Strategy Analytics", JOptionPane.PLAIN_MESSAGE);
 }
 
-    // --- TAB 3: LIVE VEHICLE LIST ---
-    private JPanel createLiveVehiclePanel() {
-        JPanel panel = new JPanel(new BorderLayout());
-        // Logic to fetch all vehicles where exitTime IS NULL
-        panel.add(new JLabel("List of vehicles currently in the building"), BorderLayout.NORTH);
-        return panel;
-    }
 
     // --- TAB 4: FINE OVERVIEW & CONFIG ---
 private JPanel createFineOverviewPanel() {

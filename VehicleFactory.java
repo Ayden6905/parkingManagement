@@ -8,20 +8,26 @@ package com.mycompany.parkingmanagement;
  * @author User
  */
 public class VehicleFactory {
-    
-    // Add 'fine' as a parameter here
-    public Vehicle createVehicle(String type, String plate, double fine) {
-        switch (type) {
-            case "Car":
-                return new Car(plate, fine); 
-            case "Motorcycle":
-                return new Motorcycle(plate, fine);
-            case "SUV":
-                return new SUV(plate, fine);
-            case "Handicapped":
-                return new HandicappedVehicle(plate, fine);
+
+    public Vehicle createVehicle(String type, String plate) {
+        return createVehicle(type, plate, 0.0);
+    }
+
+    public Vehicle createVehicle(String type, String plate, double debt) {
+        Vehicle v;
+        String vehicleType = (type == null) ? "car" : type.toLowerCase();
+
+        switch (vehicleType) {
+            case "motorcycle":
+                v = new Motorcycle(plate, debt);
+                break;
+            case "suv":
+                v = new SUV(plate, debt);
+                break;
             default:
-                throw new IllegalArgumentException("Unknown vehicle type: " + type);
+                v = new Car(plate, debt);
+                break;
         }
+        return v; // MUST have this line!
     }
 }

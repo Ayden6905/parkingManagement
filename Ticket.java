@@ -128,6 +128,10 @@ public class Ticket {
         }
     }
     
+    public ParkingSpot getSpot() {
+    return this.spotId; // Changed from .spot to .spotId
+}
+    
     public String generateFormattedTicket() {
         java.time.format.DateTimeFormatter timeFmt = java.time.format.DateTimeFormatter.ofPattern("h:mm a");
 

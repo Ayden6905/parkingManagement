@@ -93,8 +93,12 @@ public class MainFrame extends JFrame {
     // Add this inside your MainFrame class
     public void showPanel(String panelName) {
     cardLayout.show(mainContainer, panelName);
+    
+    // If we are moving to the Admin Dashboard, make sure the data is fresh!
+    if (panelName.equals("AdminDashboard")) {
+        // You'll need to keep a reference to your adminPanel to call a refresh method
     }
-
+}
     public void showReservation() {
         showPanel("Reservation");
     }

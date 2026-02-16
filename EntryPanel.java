@@ -91,69 +91,54 @@ public class EntryPanel extends JPanel {
                 JOptionPane.showMessageDialog(this, "Please enter license plate.");
                 return;
             }
-               
-            List<String> spots = facade.getAvailableSpotsFor(plateField.getText().trim(), type, handicappedCheck.isSelected());
+                
+            List<String> spots = facade.getAvailableSpotsFor(plate, type, isCardHolder);
             if (spots.isEmpty()) {
                 JOptionPane.showMessageDialog(this, "No available spots.");
                 return;
             }
             
-            // --- NEW DEBT CHECK LOGIC ---
-    double existingDebt = facade.checkExistingDebt(plate);
-    if (existingDebt > 0) {
-        int choice = JOptionPane.showConfirmDialog(this,
-            "Vehicle has an outstanding fine of RM " + String.format("%.2f", existingDebt) + 
-            ".\nContinue with entry?", 
-            "Outstanding Debt Found", 
-            JOptionPane.YES_NO_OPTION, 
-            JOptionPane.WARNING_MESSAGE);
-        
-        if (choice != JOptionPane.YES_OPTION) {
-            return; // Block entry if operator chooses 'No'
-        }
-        lblDebtWarning.setText("⚠️ UNPAID FINES: RM " + String.format("%.2f", existingDebt));
-    } else {
-        lblDebtWarning.setText(""); // Clear if no debt
-    }
-    // --- END DEBT CHECK ---
+            // --- DEBT CHECK ---
+            double existingDebt = facade.checkExistingDebt(plate);
+            if (existingDebt > 0) {
+                int choice = JOptionPane.showConfirmDialog(this,
+                    "Vehicle has an outstanding fine of RM " + String.format("%.2f", existingDebt) + 
+                    ".\nContinue with entry?", 
+                    "Outstanding Debt Found", 
+                    JOptionPane.YES_NO_OPTION, 
+                    JOptionPane.WARNING_MESSAGE);
+                
+                if (choice != JOptionPane.YES_OPTION) {
+                    return; 
+                }
+                lblDebtWarning.setText("⚠️ UNPAID FINES: RM " + String.format("%.2f", existingDebt));
+            } else {
+                lblDebtWarning.setText(""); 
+            }
 
+            // --- SPOT SELECTION ---
             String selectedSpot = (String) JOptionPane.showInputDialog(
-                    this,
-                    "Select Available Spot:",
-                    "Choose Spot",
-                    JOptionPane.PLAIN_MESSAGE,
-                    null,
-                    spots.toArray(),
-                    spots.get(0)
-            );
+                    this, "Select Available Spot:", "Choose Spot",
+                    JOptionPane.PLAIN_MESSAGE, null, spots.toArray(), spots.get(0));
 
+            // --- TICKET ISSUANCE ---
             if (selectedSpot != null) {
                 String ticketResult = facade.handleVehicleEntry(plate, type, selectedSpot, isCardHolder);
 
-                JTextArea textArea = new JTextArea(ticketResult);
-                textArea.setEditable(false);
-                JOptionPane.showMessageDialog(this,
-                        new JScrollPane(textArea),
-                        "Ticket Issued",
-                        JOptionPane.PLAIN_MESSAGE);
-                
-                // Check if the operation was successful
-if (ticketResult.startsWith("Success")) {
-    // 1. Clear the inputs
-    plateField.setText("");
-    handicappedCheck.setSelected(false);
-    
-    // 2. Show the success message (The user needs to see their ticket ID!)
-    JTextArea textArea = new JTextArea(ticketResult);
-    textArea.setEditable(false);
-    JOptionPane.showMessageDialog(this, new JScrollPane(textArea), "Ticket Issued", JOptionPane.PLAIN_MESSAGE);
-    
-    // 3. Navigate back to home
-    mainFrame.showHome(); 
-} else {
-    // If it starts with "Error" or anything else, just show the error message
-    JOptionPane.showMessageDialog(this, ticketResult, "Entry Error", JOptionPane.ERROR_MESSAGE);
-}
-        });                
-    }
-}
+                if (ticketResult.startsWith("Success")) {
+                    plateField.setText("");
+                    handicappedCheck.setSelected(false);
+                    
+                    // Show ticket
+                    JTextArea textArea = new JTextArea(ticketResult);
+                    textArea.setEditable(false);
+                    JOptionPane.showMessageDialog(this, new JScrollPane(textArea), "Ticket Issued", JOptionPane.PLAIN_MESSAGE);
+                    
+                    mainFrame.showHome(); 
+                } else {
+                    JOptionPane.showMessageDialog(this, ticketResult, "Entry Error", JOptionPane.ERROR_MESSAGE);
+                }
+            } // This closes the selectedSpot check
+        }); // This closes the btnPark action listener
+    } // This closes the EntryPanel constructor
+} // This closes the EntryPanel class
