@@ -11,6 +11,7 @@ import java.sql.*;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.time.LocalDateTime;
 
 public class ParkingRepository {
 
@@ -272,5 +273,51 @@ public List<Object[]> getOccupancyDetailsByFloor(int floor) {
         }
         return details;
     }
+
+public boolean updateSpotStatus(String spotId, String status) {
+    String sql = "UPDATE parkingSpot SET status = ? WHERE spotId = ?";
+    
+    try (Connection conn = DatabaseConfig.getConnection();
+         PreparedStatement ps = conn.prepareStatement(sql)) {
+        
+        ps.setString(1, status); // e.g., "Occupied" or "Available"
+        ps.setString(2, spotId); // e.g., "F1-R2-S1"
+        
+        int rowsAffected = ps.executeUpdate();
+        return rowsAffected > 0;
+        
+    } catch (SQLException e) {
+        System.err.println("Error updating spot status: " + e.getMessage());
+        return false;
+    }
+}
+
+// Inside ParkingRepository.java
+public List<Reservation> getAllActiveReservations() {
+    List<Reservation> list = new ArrayList<>();
+    String sql = "SELECT * FROM reservation WHERE status = 'ACTIVE'";
+
+    try (Connection conn = DatabaseConfig.getConnection();
+         PreparedStatement ps = conn.prepareStatement(sql);
+         ResultSet rs = ps.executeQuery()) {
+
+        while (rs.next()) {
+            String resId = rs.getString("reservationId");
+            String plate = rs.getString("plate");
+            String spotId = rs.getString("spotId");
+            LocalDateTime start = rs.getTimestamp("startTime").toLocalDateTime();
+            LocalDateTime end = rs.getTimestamp("endTime").toLocalDateTime();
+            
+            ParkingSpot spot = ParkingLot.getInstance().findSpotById(spotId);
+            
+            if (spot instanceof ReservedSpot) {
+                list.add(new Reservation(resId, plate, (ReservedSpot) spot, start, end, ReservationStatus.ACTIVE));
+            }
+        }
+    } catch (SQLException e) {
+        e.printStackTrace();
+    }
+    return list;
+}
 }
 

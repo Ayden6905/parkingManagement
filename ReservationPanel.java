@@ -11,6 +11,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Panel to handle user reservations for specific parking spots.
@@ -98,15 +99,20 @@ public class ReservationPanel extends JPanel {
             
             ParkingRepository repo = new ParkingRepository();
             if (repo.createReservation(r)) {
-                spot.setStatus(SpotStatus.OCCUPIED); 
-                ParkingLot.getInstance().addReservation(r);
-                
-                msg.setText("Success! Spot " + actualId + " reserved for " + plate);
-                msg.setForeground(new Color(0, 153, 0)); 
-                
-                plateField.setText("");
-                refreshAvailableReservedSpots(); 
-            } else {
+    // 1. Update the local Java object
+    spot.setStatus(SpotStatus.OCCUPIED); 
+    
+    // 2. ADD THIS: Update the Database status so the Dashboard sees it!
+    repo.updateSpotStatus(actualId, "Occupied"); // Ensure this method exists in ParkingRepository
+    
+    ParkingLot.getInstance().addReservation(r);
+    
+    msg.setText("Success! Spot " + actualId + " reserved for " + plate);
+    msg.setForeground(new Color(0, 153, 0)); 
+    
+    plateField.setText("");
+    refreshAvailableReservedSpots(); 
+} else {
                 msg.setText("Database Error: Could not save reservation.");
                 msg.setForeground(Color.RED);
             }
@@ -131,4 +137,6 @@ public class ReservationPanel extends JPanel {
             availableReserved.forEach(spotDropdown::addItem);
         }
     }
+    
+    
 }

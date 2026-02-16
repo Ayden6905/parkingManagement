@@ -125,27 +125,25 @@ add(msgLabel, gbc);
             }
         });
     }
+    
 
 private Vehicle createVehicle(String plate) {
-    String type = (String) typeCombo.getSelectedItem(); 
-    boolean isHandi = handicappedCheck.isSelected();
-    Vehicle v;
+        String type = (String) typeCombo.getSelectedItem(); 
+        boolean isHandi = handicappedCheck.isSelected();
+        Vehicle v;
 
-    // 1. First, determine the base vehicle type
-    if ("Motorcycle".equalsIgnoreCase(type)) {
-        v = new Motorcycle(plate, 0.0);
-    } else if ("SUV/Truck".equalsIgnoreCase(type)) {
-        v = new SUV(plate, 0.0);
-    } else {
-        v = new Car(plate, 0.0); // Default to Car
+        if ("Motorcycle".equalsIgnoreCase(type)) {
+            v = new Motorcycle(plate, 0.0);
+        } else if ("SUV/Truck".equalsIgnoreCase(type)) {
+            v = new SUV(plate, 0.0);
+        } else {
+            v = new Car(plate, 0.0);
+        }
+
+        if (isHandi) {
+            v.setHandicappedCardHolder(true);
+        }
+        return v;
+    }
     }
 
-    // 2. Then, apply the handicapped status if ticked
-    // This allows a Car or Motorcycle to also be "Handicapped"
-    if (isHandi) {
-        v.setHandicappedCardHolder(true);
-    }
-    
-    return v;
-}
-}

@@ -85,15 +85,16 @@ public class MainFrame extends JFrame {
         showPanel("Home");
     }
     
-    public void showPanel(String panelName) {
-        cardLayout.show(mainContainer, panelName);
-        
-        // CRITICAL FIX: Refresh the dropdown whenever the Reservation screen is shown
-        // This prevents selecting a spot that was just taken by someone else.
-        if (panelName.equals("Reservation")) {
-            reservationPanel.refreshAvailableReservedSpots();
-        }
+   public void showPanel(String panelName) {
+    // Force a fresh pull from the DB every time we change screens
+    ParkingLot.getInstance().loadDataFromDatabase(); 
+
+    cardLayout.show(mainContainer, panelName);
+
+    if (panelName.equals("Reservation")) {
+        reservationPanel.refreshAvailableReservedSpots();
     }
+}
 
     public void showReservation() {
         showPanel("Reservation");

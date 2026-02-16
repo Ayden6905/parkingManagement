@@ -7,7 +7,6 @@ package com.mycompany.parkingmanagement;
  *
  * @author NurqistinaAtashah
  */
-
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -294,6 +293,32 @@ public String getFormattedSpotName(ParkingSpot spot) {
     return spot.getSpotId() + " (" + type + ")";
 }
 
+public void loadDataFromDatabase() {
+    // 1. Wipe old memory lists to prevent duplicates or ghost data
+    this.reservations.clear(); 
+
+    ParkingRepository repo = new ParkingRepository();
+    
+    // 2. Synchronize all parking spot statuses from the DB
+    List<ParkingSpot> dbSpots = repo.getAllParkingSpots();
+    for (ParkingSpot dbSpot : dbSpots) {
+        ParkingSpot localSpot = findSpotById(dbSpot.getSpotId());
+        if (localSpot != null) {
+            // This ensures "Available" in DB becomes "Available" in UI
+            localSpot.setStatus(dbSpot.getStatus()); 
+        }
+    }
+
+    // 3. Reload active reservations into memory
+    List<Reservation> dbReservations = repo.getAllActiveReservations();
+    if (dbReservations != null) {
+        this.reservations.addAll(dbReservations);
+    }
+}
+
+
+
+
 public List<ParkingSpot> getAvailableAndReservedSpots(Vehicle v, String plate) {
     List<ParkingSpot> compatibleSpots = new ArrayList<>();
     
@@ -328,5 +353,9 @@ public List<ParkingSpot> getAvailableAndReservedSpots(Vehicle v, String plate) {
     }
     return compatibleSpots;
 }
+
+
+
+
 
 }
