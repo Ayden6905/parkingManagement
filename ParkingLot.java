@@ -310,39 +310,42 @@ public String getFormattedSpotName(ParkingSpot spot) {
     return spot.getSpotId() + " (" + type + ")";
 }
 
-public List<ParkingSpot> getAvailableAndReservedSpots(Vehicle v, String plate) {
+public List<ParkingSpot> getAvailableSpotsForVehicle(Vehicle v) {
     List<ParkingSpot> compatibleSpots = new ArrayList<>();
-    
+
     for (Floor floor : floors) {
         for (ParkingSpot s : floor.getAllSpots()) {
-            
-            // 1. If someone is already parked there, nobody else can.
+
+            // Only AVAILABLE spots
             if (!s.isAvailable()) continue;
 
-            // 2. Logic: Who can see this spot?
-            boolean showSpot = false;
-
-            // Rule A: Reserved spots are now open to everyone (but subject to fines later)
+            // Reserved spots visible to everyone
             if (s instanceof ReservedSpot) {
-                showSpot = true; 
-            }
-            // Rule B: Handicapped people can see everything
-            else if (v.isHandicappedCardHolder()) {
-                showSpot = true;
-            }
-            // Rule C: Standard Type Compatibility
-            else {
-                if (v instanceof Motorcycle && s instanceof CompactSpot) showSpot = true;
-                else if (v instanceof SUV && s instanceof RegularSpot) showSpot = true;
-                else if (v instanceof Car && (s instanceof RegularSpot || s instanceof CompactSpot)) showSpot = true;
+                compatibleSpots.add(s);
+                continue;
             }
 
-            if (showSpot) {
+            // SUV/Truck
+            if (v instanceof SUV && s instanceof RegularSpot) {
+                compatibleSpots.add(s);
+            }
+
+            // Car
+            else if (v instanceof Car &&
+                    (s instanceof RegularSpot || s instanceof CompactSpot)) {
+                compatibleSpots.add(s);
+            }
+
+            // Motorcycle
+            else if (v instanceof Motorcycle &&
+                    (s instanceof CompactSpot || s instanceof RegularSpot)) {
                 compatibleSpots.add(s);
             }
         }
     }
     return compatibleSpots;
 }
+
+
 
 }

@@ -92,6 +92,13 @@ public class ReservationPanel extends JPanel {
 
             ParkingSpot spot = ParkingLot.getInstance().findSpotById(actualId);
             
+              if (spot == null || !(spot instanceof ReservedSpot)) {
+                msg.setText("Error: Selected spot is invalid.");
+                msg.setForeground(Color.RED);
+                return;
+            }          
+            
+            
             int hours = (Integer) hoursSpinner.getValue();
             LocalDateTime start = LocalDateTime.now();
             LocalDateTime end = start.plusHours(hours);
