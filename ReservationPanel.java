@@ -16,7 +16,6 @@ import java.util.stream.Collectors;
 /**
  * Panel to handle user reservations for specific parking spots.
  */
-
 public class ReservationPanel extends JPanel {   
     private ParkingSystemFacade facade;
     private MainFrame mainFrame;
@@ -76,32 +75,39 @@ public class ReservationPanel extends JPanel {
 
         btnCreate.addActionListener(e -> {
             String plate = plateField.getText().trim();
-            // FIX 1: Correctly grab the object from the dropdown
             Object selectedItem = spotDropdown.getSelectedItem();
 
-            // Validation
+            // 1. Validation
             if (plate.isEmpty() || selectedItem == null || selectedItem.toString().equals("No Reserved Spots Available")) {
                 msg.setText("Plate and Spot Selection are required.");
                 msg.setForeground(Color.RED);
                 return;
             }
 
-            // FIX 2: Extract the actual ID from "F1-R2-S1 (Reserved)"
+            // 2. Extract ID
             String fullText = selectedItem.toString();
             String actualId = fullText.split(" ")[0]; 
 
+            // 3. Object Retrieval
             ParkingSpot spot = ParkingLot.getInstance().findSpotById(actualId);
             
+            if (spot == null || !(spot instanceof ReservedSpot)) {
+                msg.setText("Error: Selected spot is invalid.");
+                msg.setForeground(Color.RED);
+                return;
+            }
+
             int hours = (Integer) hoursSpinner.getValue();
             LocalDateTime start = LocalDateTime.now();
             LocalDateTime end = start.plusHours(hours);
             String resId = "R-" + plate + "-" + System.currentTimeMillis();
 
-            // Create object
+            // 4. Create Reservation
             Reservation r = new Reservation(
                     resId, plate, (ReservedSpot) spot, start, end, ReservationStatus.ACTIVE
             );
             
+            // 5. Save and Sync
             ParkingRepository repo = new ParkingRepository();
             if (repo.createReservation(r)) {
                 spot.setStatus(SpotStatus.OCCUPIED); 
@@ -119,10 +125,12 @@ public class ReservationPanel extends JPanel {
         });
     }
 
+    /**
+     * Updates the JComboBox with available ReservedSpots.
+     */
     public void refreshAvailableReservedSpots() {
         spotDropdown.removeAllItems();
         
-        // This leverages the toString() we added to ParkingSpot earlier
         List<String> availableReserved = ParkingLot.getInstance().getSpots().values().stream()
             .filter(s -> s instanceof ReservedSpot)
             .filter(s -> s.getStatus() == SpotStatus.AVAILABLE)
