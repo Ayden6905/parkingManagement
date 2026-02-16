@@ -2,7 +2,7 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
-package com.mycompany.parkingmanagement;
+
 /**
  *
  * @author ayden
@@ -54,48 +54,71 @@ public class ParkingRepository {
         return null; // No spots found
     }
 
-    // 2. Updates spot status AND creates a ticket
+    // 2. Updates spot status AND creates a ticket (atomic + prevents double booking)
     public boolean parkVehicle(Vehicle vehicle, String spotId) {
-        String updateSpotSql = "UPDATE parkingSpot SET status = 'Occupied' WHERE spotId = ?";
-        String insertTicketSql = "INSERT INTO ticket (ticketId, licensePlate, spotId, entryTime) VALUES (?, ?, ?, ?)";
-        
+
+        String updateSpotSql
+                = "UPDATE parkingSpot SET status = 'Occupied' "
+                + "WHERE spotId = ? AND status = 'Available'";
+
+        String insertTicketSql
+                = "INSERT INTO ticket (ticketId, licensePlate, spotId, entryTime) VALUES (?, ?, ?, ?)";
+
         Connection conn = null;
+
         try {
             conn = DatabaseConfig.getConnection();
             conn.setAutoCommit(false); // START TRANSACTION
 
-            // Step A: Mark spot as Occupied
+            // Step A: Mark spot as Occupied ONLY if still Available
+            int updated;
             try (PreparedStatement updateStmt = conn.prepareStatement(updateSpotSql)) {
                 updateStmt.setString(1, spotId);
-                updateStmt.executeUpdate();
+                updated = updateStmt.executeUpdate();
             }
 
-            // Step B: Generate Ticket
+            // If no row updated, spot was not available (already taken)
+            if (updated == 0) {
+                conn.rollback();
+                return false;
+            }
+
+            // Step B: Insert ticket
             try (PreparedStatement ticketStmt = conn.prepareStatement(insertTicketSql)) {
-                // Ticket ID Format: T-PLATE-TIMESTAMP
-                String timestampStr = vehicle.getEntryTime().format(DateTimeFormatter.ofPattern("yyyyMMddHHmm"));
+                String timestampStr = vehicle.getEntryTime()
+                        .format(DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS"));
                 String ticketId = "T-" + vehicle.getLicensePlate() + "-" + timestampStr;
 
                 ticketStmt.setString(1, ticketId);
                 ticketStmt.setString(2, vehicle.getLicensePlate());
                 ticketStmt.setString(3, spotId);
                 ticketStmt.setTimestamp(4, Timestamp.valueOf(vehicle.getEntryTime()));
-                
+
                 ticketStmt.executeUpdate();
             }
 
-            conn.commit(); // COMMIT TRANSACTION
+            conn.commit();
             return true;
 
         } catch (SQLException e) {
             if (conn != null) {
-                try { conn.rollback(); } catch (SQLException ex) { ex.printStackTrace(); }
+                try {
+                    conn.rollback();
+                } catch (SQLException ex) {
+                    ex.printStackTrace();
+                }
             }
             e.printStackTrace();
             return false;
+
         } finally {
             if (conn != null) {
-                try { conn.setAutoCommit(true); conn.close(); } catch (SQLException e) { e.printStackTrace(); }
+                try {
+                    conn.setAutoCommit(true);
+                    conn.close();
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
             }
         }
     }
@@ -250,6 +273,118 @@ public List<Object[]> getOccupancyDetailsByFloor(int floor) {
             e.printStackTrace(); 
         }
         return details;
+    }
+
+    public List<String> getReservedSelectableSpotIds(String plate) {
+        List<String> ids = new ArrayList<>();
+
+        String sql
+                = "SELECT r.spotId "
+                + "FROM reservation r "
+                + "JOIN parkingSpot p ON p.spotId = r.spotId "
+                + "LEFT JOIN ticket t ON t.spotId = r.spotId AND t.exitTime IS NULL "
+                + "WHERE UPPER(r.plate) = UPPER(?) "
+                + "  AND r.status = 'ACTIVE' "
+                + "  AND NOW() BETWEEN r.startTime AND r.endTime "
+                + "  AND p.status = 'Available' "
+                + "  AND t.spotId IS NULL";
+
+        try (Connection conn = DatabaseConfig.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, plate);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    ids.add(rs.getString("spotId"));
+                }
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return ids;
+    }
+    
+    public List<String> getSelectableSpotIds(String plate, String vehicleType, boolean isCardHolder) {
+        List<String> ids = new ArrayList<>();
+
+        // 1) Check if plate has an active reservation (DB)
+        List<String> reservedIds = getReservedSelectableSpotIds(plate);
+        boolean hasReservation = !reservedIds.isEmpty();
+
+        // 2) Only fetch AVAILABLE spots from DB
+        String sql = "SELECT spotId, spotType FROM parkingSpot WHERE status = 'Available'";
+
+        try (Connection conn = DatabaseConfig.getConnection(); PreparedStatement ps = conn.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
+
+            VehicleFactory vf = new VehicleFactory();
+            Vehicle v = vf.createVehicle(vehicleType, "TEMP");
+            v.setHandicappedCardHolder(isCardHolder);
+
+            while (rs.next()) {
+                String spotId = rs.getString("spotId");
+                String spotType = rs.getString("spotType");
+
+                // --- Reserved rule ---
+                if ("Reserved".equalsIgnoreCase(spotType) || "RESERVED".equalsIgnoreCase(spotType)) {
+                    // Only show reserved if this plate reserved it AND within valid time
+                    if (!reservedIds.contains(spotId)) {
+                        continue;
+                    }
+                } else {
+                    // If they DO have a reservation, see ONLY reserved options
+                    if (hasReservation) {
+                        continue;
+                    }
+                }
+
+                if (isCompatible(vehicleType, isCardHolder, spotType)) {
+                    ids.add(spotId);
+                }
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return ids;
+    }
+
+    private boolean isCompatible(String vehicleType, boolean isCardHolder, String spotType) {
+        String vt = vehicleType.toUpperCase();
+        String st = spotType.toUpperCase();
+
+        // handicapped driver can park anywhere
+        if (isCardHolder || vt.equals("HANDICAPPED")) {
+            return true;
+        }
+
+        switch (vt) {
+            case "MOTORCYCLE":
+                return st.equals("COMPACT");
+            case "CAR":
+                return st.equals("COMPACT") || st.equals("REGULAR");
+            case "SUV":
+                return st.equals("REGULAR");
+            default:
+                return false;
+        }
+    }
+    
+    public boolean occupySpot(String spotId) {
+        String sql = "UPDATE parkingSpot SET status = 'Occupied' "
+                + "WHERE spotId = ? AND status = 'Available'";
+
+        try (Connection conn = DatabaseConfig.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, spotId);
+            return ps.executeUpdate() == 1;
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
     }
 }
 

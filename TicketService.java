@@ -2,7 +2,7 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
-package com.mycompany.parkingmanagement;
+
 /**
  *
  * @author User
@@ -43,11 +43,15 @@ public class TicketService {
         // 4. Instantiate Ticket with debt tracking
         Ticket ticket = new Ticket(ticketId, vehicle, spot, LocalDateTime.now(), scheme, carriedOverFine);
 
-        // 5. Save to the database (Ensures ZXC 123 appears in Admin)
+        // 5. LOCK spot in DB first (prevents 2 cars taking same spot)
+        ParkingRepository repo = new ParkingRepository();
+        boolean ok = repo.occupySpot(spotId);
+        if (!ok) {
+            throw new RuntimeException("Spot already taken. Please choose another spot.");
+        }
+
+        // 6. Now save ticket
         ticket.saveEntry();
-        
-        // 6. Update spot status
-        updateSpotStatus(spotId, "Occupied");
 
         return ticketId;
     }
@@ -163,5 +167,5 @@ public class TicketService {
             ps.setString(1, spotId);
             ps.executeUpdate();
         } catch (SQLException e) { e.printStackTrace(); }
-    }
+    }        
 }

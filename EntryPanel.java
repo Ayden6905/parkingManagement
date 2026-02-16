@@ -2,7 +2,7 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
-package com.mycompany.parkingmanagement;
+
 /**
  *
  * @author NurqistinaAtashah
@@ -92,8 +92,9 @@ public class EntryPanel extends JPanel {
                 return;
             }
                 
-            List<String> spots = facade.getAvailableSpotsFor(plate, type, isCardHolder);
-            if (spots.isEmpty()) {
+            List<String> optionsToShow = facade.getAvailableSpotsFor(plate, type, isCardHolder);
+
+            if (optionsToShow.isEmpty()) {
                 JOptionPane.showMessageDialog(this, "No available spots.");
                 return;
             }
@@ -116,29 +117,45 @@ public class EntryPanel extends JPanel {
                 lblDebtWarning.setText(""); 
             }
 
-            // --- SPOT SELECTION ---
+            // --- SPOT SELECTION ---            
+            String titleMsg = "Choose Spot";
             String selectedSpot = (String) JOptionPane.showInputDialog(
-                    this, "Select Available Spot:", "Choose Spot",
-                    JOptionPane.PLAIN_MESSAGE, null, spots.toArray(), spots.get(0));
+                    this,
+                    "Select Available Spot:",
+                    titleMsg,
+                    JOptionPane.PLAIN_MESSAGE,
+                    null,
+                    optionsToShow.toArray(),
+                    optionsToShow.get(0)
+            );
+
 
             // --- TICKET ISSUANCE ---
-            if (selectedSpot != null) {
-                String ticketResult = facade.handleVehicleEntry(plate, type, selectedSpot, isCardHolder);
+            String ticketResult = facade.handleVehicleEntry(plate, type, selectedSpot, isCardHolder);
 
-                if (ticketResult.startsWith("Success")) {
-                    plateField.setText("");
-                    handicappedCheck.setSelected(false);
-                    
-                    // Show ticket
-                    JTextArea textArea = new JTextArea(ticketResult);
-                    textArea.setEditable(false);
-                    JOptionPane.showMessageDialog(this, new JScrollPane(textArea), "Ticket Issued", JOptionPane.PLAIN_MESSAGE);
-                    
-                    mainFrame.showHome(); 
-                } else {
-                    JOptionPane.showMessageDialog(this, ticketResult, "Entry Error", JOptionPane.ERROR_MESSAGE);
-                }
-            } // This closes the selectedSpot check
+            if (ticketResult == null || ticketResult.startsWith("Error")) {
+                JOptionPane.showMessageDialog(
+                        this,
+                        ticketResult,
+                        "Entry Error",
+                        JOptionPane.ERROR_MESSAGE
+                );
+                return;
+            }
+
+            plateField.setText("");
+            handicappedCheck.setSelected(false);
+
+            JTextArea textArea = new JTextArea(ticketResult);
+            textArea.setEditable(false);
+            JOptionPane.showMessageDialog(
+                    this,
+                    new JScrollPane(textArea),
+                    "Ticket Issued",
+                    JOptionPane.PLAIN_MESSAGE
+            );
+
+            mainFrame.showHome();
         }); // This closes the btnPark action listener
     } // This closes the EntryPanel constructor
 } // This closes the EntryPanel class
