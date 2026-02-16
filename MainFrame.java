@@ -10,15 +10,15 @@ package com.mycompany.parkingmanagement;
 import javax.swing.*;
 import java.awt.*;
 
-
 public class MainFrame extends JFrame {
     private CardLayout cardLayout = new CardLayout();
     private JPanel mainContainer = new JPanel(cardLayout);
     private ParkingSystemFacade facade = new ParkingSystemFacade();
     
+    // Declare panels as fields so showPanel can access them
     private EntryPanel entryPanel;
     private ExitPanel exitPanel;
-  
+    private ReservationPanel reservationPanel; 
 
     public MainFrame() {
         setTitle("Parking Management System");
@@ -26,21 +26,19 @@ public class MainFrame extends JFrame {
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
 
-        // 1. Create the Main Menu (the screen in your image)
+        // 1. Initialize Panels
         JPanel homePanel = createHomePanel();
-        
         entryPanel = new EntryPanel(facade, this);
         exitPanel = new ExitPanel(facade, this);
+        reservationPanel = new ReservationPanel(facade, this);
         
         // 2. Add screens to the container
         mainContainer.add(homePanel, "Home");
-        mainContainer.add(new EntryPanel(facade, this), "Entry"); // Member 4 task
-        mainContainer.add(new ExitPanel(facade, this), "Exit");
-        // mainContainer.add(new ExitPanel(facade, this), "Exit"); 
-        // Change "Admin" to "AdminDashboard"
+        mainContainer.add(entryPanel, "Entry"); 
+        mainContainer.add(exitPanel, "Exit");
         mainContainer.add(new AdminPanel(facade, this), "AdminDashboard");
         mainContainer.add(new AdminLogin(facade, this), "AdminLogin");
-        mainContainer.add(new ReservationPanel(facade, this), "Reservation");
+        mainContainer.add(reservationPanel, "Reservation");
 
         add(mainContainer);
     }
@@ -57,7 +55,6 @@ public class MainFrame extends JFrame {
         gbc.gridy = 0; 
         panel.add(title, gbc);
 
-        // Buttons based on your image
         JButton btnEntry = createMenuButton("Entry System");
         JButton btnAdmin = createMenuButton("Admin Login");
         JButton btnExit = createMenuButton("Exit System");
@@ -67,13 +64,12 @@ public class MainFrame extends JFrame {
         gbc.gridy = 3; panel.add(btnExit, gbc);
 
         // Navigation logic
-        btnEntry.addActionListener(e -> cardLayout.show(mainContainer, "Entry"));
+        btnEntry.addActionListener(e -> showPanel("Entry"));
         btnAdmin.addActionListener(e -> showPanel("AdminLogin"));
         btnExit.addActionListener(e -> {
             exitPanel.reset();
-            cardLayout.show(mainContainer, "Exit");
-                });
-        // Add listeners for Exit and Admin later
+            showPanel("Exit");
+        });
 
         return panel;
     }
@@ -85,20 +81,20 @@ public class MainFrame extends JFrame {
         return btn;
     }
 
-    // Method to allow panels to switch back to Home
     public void showHome() {
-        cardLayout.show(mainContainer, "Home");
+        showPanel("Home");
     }
     
-    // Add this inside your MainFrame class
     public void showPanel(String panelName) {
-    cardLayout.show(mainContainer, panelName);
-    
-    // If we are moving to the Admin Dashboard, make sure the data is fresh!
-    if (panelName.equals("AdminDashboard")) {
-        // You'll need to keep a reference to your adminPanel to call a refresh method
+        cardLayout.show(mainContainer, panelName);
+        
+        // CRITICAL FIX: Refresh the dropdown whenever the Reservation screen is shown
+        // This prevents selecting a spot that was just taken by someone else.
+        if (panelName.equals("Reservation")) {
+            reservationPanel.refreshAvailableReservedSpots();
+        }
     }
-}
+
     public void showReservation() {
         showPanel("Reservation");
     }

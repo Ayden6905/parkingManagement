@@ -145,25 +145,46 @@ public class ParkingRepository {
     }
     
     public boolean createReservation(Reservation r) {
-        String sql = "INSERT INTO reservation (reservationId, plate, spotId, startTime, endTime, status) "
-                + "VALUES (?, ?, ?, ?, ?, ?)";
+    String insertReservationSql = "INSERT INTO reservation (reservationId, plate, spotId, startTime, endTime, status) VALUES (?, ?, ?, ?, ?, ?)";
+    String updateSpotSql = "UPDATE parkingSpot SET status = 'Occupied' WHERE spotId = ?";
 
-        try (Connection conn = DatabaseConfig.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+    Connection conn = null;
+    try {
+        conn = DatabaseConfig.getConnection();
+        conn.setAutoCommit(false); // START TRANSACTION
 
-            ps.setString(1, r.getReservationId());
-            ps.setString(2, r.getLicensePlate());
-            ps.setString(3, r.getSpotId().getSpotId());
-            ps.setTimestamp(4, Timestamp.valueOf(r.getStartTime()));
-            ps.setTimestamp(5, Timestamp.valueOf(r.getEndTime()));
-            ps.setString(6, r.getStatus().name());
+        // Step 1: Insert the Reservation
+        try (PreparedStatement psRes = conn.prepareStatement(insertReservationSql)) {
+            psRes.setString(1, r.getReservationId());
+            psRes.setString(2, r.getLicensePlate());
+            psRes.setString(3, r.getSpotId().getSpotId());
+            psRes.setTimestamp(4, Timestamp.valueOf(r.getStartTime()));
+            psRes.setTimestamp(5, Timestamp.valueOf(r.getEndTime()));
+            psRes.setString(6, r.getStatus().name());
+            psRes.executeUpdate();
+        }
 
-            return ps.executeUpdate() == 1;
+        // Step 2: Mark the spot as Occupied in the database
+        try (PreparedStatement psSpot = conn.prepareStatement(updateSpotSql)) {
+            psSpot.setString(1, r.getSpotId().getSpotId());
+            psSpot.executeUpdate();
+        }
 
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return false;
+        conn.commit(); // COMMIT both changes
+        return true;
+
+    } catch (SQLException e) {
+        if (conn != null) {
+            try { conn.rollback(); } catch (SQLException ex) { ex.printStackTrace(); }
+        }
+        e.printStackTrace();
+        return false;
+    } finally {
+        if (conn != null) {
+            try { conn.setAutoCommit(true); conn.close(); } catch (SQLException e) { e.printStackTrace(); }
         }
     }
+}
     
     // Add this to ParkingRepository.java
 public boolean releaseSpot(String spotId) {

@@ -11,15 +11,11 @@ import javax.swing.*;
 import java.awt.*;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.stream.Collectors;
 
-/**
- * Panel to handle user reservations for specific parking spots.
- */
 public class ReservationPanel extends JPanel {   
     private ParkingSystemFacade facade;
     private MainFrame mainFrame;
-    private JComboBox<String> spotDropdown;
+    private JComboBox<String> spotDropdown; // This is the correct variable name
     private JTextField plateField;
     private JLabel msg;
     
@@ -33,24 +29,20 @@ public class ReservationPanel extends JPanel {
         gbc.insets = new Insets(10, 10, 10, 10);
         gbc.fill = GridBagConstraints.HORIZONTAL;
 
-        // --- Title ---
         JLabel title = new JLabel("Reserve Parking Spot");
         title.setFont(new Font("SansSerif", Font.BOLD, 18));
 
-        // --- Input Fields ---
         plateField = new JTextField(15);
         spotDropdown = new JComboBox<>();
-        refreshAvailableReservedSpots(); 
+        refreshAvailableReservedSpots();
 
         SpinnerNumberModel hoursModel = new SpinnerNumberModel(2, 1, 24, 1);
         JSpinner hoursSpinner = new JSpinner(hoursModel);
         msg = new JLabel(" "); 
 
-        // --- Buttons ---
         JButton btnCreate = new JButton("Create Reservation");
         JButton btnBack = new JButton("Back");
 
-        // --- Layout Mapping ---
         gbc.gridx = 0; gbc.gridy = 0; gbc.gridwidth = 2; 
         add(title, gbc);
         
@@ -70,72 +62,49 @@ public class ReservationPanel extends JPanel {
         gbc.gridx = 0; gbc.gridy = 5; gbc.gridwidth = 2; 
         add(msg, gbc);
         
-        // --- Listeners ---
         btnBack.addActionListener(e -> mainFrame.showHome());
 
         btnCreate.addActionListener(e -> {
-            String plate = plateField.getText().trim();
-            Object selectedItem = spotDropdown.getSelectedItem();
-
-            // 1. Validation
-            if (plate.isEmpty() || selectedItem == null || selectedItem.toString().equals("No Reserved Spots Available")) {
-                msg.setText("Plate and Spot Selection are required.");
-                msg.setForeground(Color.RED);
-                return;
-            }
-
-            // 2. Extract ID
-            String fullText = selectedItem.toString();
-            String actualId = fullText.split(" ")[0]; 
-
-            // 3. Object Retrieval
-            ParkingSpot spot = ParkingLot.getInstance().findSpotById(actualId);
-            
-            if (spot == null || !(spot instanceof ReservedSpot)) {
-                msg.setText("Error: Selected spot is invalid.");
-                msg.setForeground(Color.RED);
-                return;
-            }
-
-            int hours = (Integer) hoursSpinner.getValue();
-            LocalDateTime start = LocalDateTime.now();
-            LocalDateTime end = start.plusHours(hours);
-            String resId = "R-" + plate + "-" + System.currentTimeMillis();
-
-            // 4. Create Reservation
-            Reservation r = new Reservation(
-                    resId, plate, (ReservedSpot) spot, start, end, ReservationStatus.ACTIVE
-            );
-            
-            // 5. Save and Sync
-            ParkingRepository repo = new ParkingRepository();
-            if (repo.createReservation(r)) {
-                spot.setStatus(SpotStatus.OCCUPIED); 
-                ParkingLot.getInstance().addReservation(r);
-                
-                msg.setText("Success! Spot " + actualId + " reserved for " + plate);
-                msg.setForeground(new Color(0, 153, 0)); 
-                
-                plateField.setText("");
-                refreshAvailableReservedSpots(); 
-            } else {
-                msg.setText("Database Error: Could not save reservation.");
-                msg.setForeground(Color.RED);
-            }
-        });
+    String plate = plateField.getText().trim();
+    String selection = (String) spotDropdown.getSelectedItem(); 
+    
+    if (plate.isEmpty()) {
+        JOptionPane.showMessageDialog(this, "Please enter a license plate.");
+        return;
     }
 
-    /**
-     * Updates the JComboBox with available ReservedSpots.
-     */
+    if (selection != null && !selection.equals("No Reserved Spots Available")) {
+        String actualId = selection.split(" ")[0];
+        
+        // This method in your Facade performs the SQL check and INSERT
+        boolean success = facade.createReservationInDB(plate, actualId, LocalDateTime.now());
+        
+        if (success) {
+            JOptionPane.showMessageDialog(this, "Reservation Successful for spot: " + actualId);
+            
+            // CRITICAL: Refresh immediately after success to remove the spot from the list
+            refreshAvailableReservedSpots(); 
+            
+            plateField.setText(""); // Clear field for next use
+            mainFrame.showHome();
+        } else {
+            // This is triggered if someone else reserved it in the split second before you
+            JOptionPane.showMessageDialog(this, 
+                "ERROR: Spot " + actualId + " is no longer available!", 
+                "Reservation Error", 
+                JOptionPane.ERROR_MESSAGE);
+            
+            refreshAvailableReservedSpots(); // Sync the dropdown with the DB
+        }
+    }
+});
+    }
+
     public void refreshAvailableReservedSpots() {
         spotDropdown.removeAllItems();
         
-        List<String> availableReserved = ParkingLot.getInstance().getSpots().values().stream()
-            .filter(s -> s instanceof ReservedSpot)
-            .filter(s -> s.getStatus() == SpotStatus.AVAILABLE)
-            .map(ParkingSpot::toString) 
-            .collect(Collectors.toList());
+        // This ensures only spots that are Available and NOT currently reserved show up
+        List<String> availableReserved = facade.getAvailableReservedSpotsForUI(); 
 
         if (availableReserved.isEmpty()) {
             spotDropdown.addItem("No Reserved Spots Available");

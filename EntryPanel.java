@@ -69,79 +69,51 @@ public class EntryPanel extends JPanel {
         gbc.gridy = 3; gbc.gridx = 0; gbc.gridwidth = 2; 
         add(handicappedCheck, gbc);
 
-        // Debt Warning Label
-        gbc.gridy = 4;
-        add(lblDebtWarning, gbc);
-
-        gbc.gridy = 5;
-        add(btnPark, gbc);
-
-        gbc.gridy = 6;
-        add(btnReserve, gbc);
-
-        gbc.gridy = 7;
-        add(btnBack, gbc);
-
-        gbc.gridy = 8;
-        add(msgLabel, gbc);
+        gbc.gridy = 4; add(lblDebtWarning, gbc);
+        gbc.gridy = 5; add(btnPark, gbc);
+        gbc.gridy = 6; add(btnReserve, gbc);
+        gbc.gridy = 7; add(btnBack, gbc);
+        gbc.gridy = 8; add(msgLabel, gbc);
 
         // --- Logic ---
         btnBack.addActionListener(e -> mainFrame.showHome());
 
         btnPark.addActionListener(e -> {
-            String plate = plateField.getText().trim();
-            
-            if (plate.isEmpty()) {
-                JOptionPane.showMessageDialog(this, "Please enter license plate!");
-                return;
-            }
+    String plate = plateField.getText().trim();
+    String type = (String) typeCombo.getSelectedItem();
+    boolean isHandi = handicappedCheck.isSelected();
 
-            // Debt Check Logic
-            double existingDebt = facade.checkExistingDebt(plate);
-            if (existingDebt > 0) {
-                int choice = JOptionPane.showConfirmDialog(this,
-                    "Vehicle has an outstanding fine of RM " + String.format("%.2f", existingDebt) + 
-                    ".\nContinue with entry?", 
-                    "Outstanding Debt Found", 
-                    JOptionPane.YES_NO_OPTION, 
-                    JOptionPane.WARNING_MESSAGE);
-                
-                if (choice != JOptionPane.YES_OPTION) return;
+    // 1. Get ONLY available spots with their types
+    List<String> options = facade.getAvailableSpotsFor(plate, type, isHandi);
 
-                lblDebtWarning.setText("⚠️ UNPAID FINES: RM " + String.format("%.2f", existingDebt));
-            } else {
-                lblDebtWarning.setText(""); 
-            }
+    if (options.isEmpty()) {
+        JOptionPane.showMessageDialog(this, "No vacant spots available for this vehicle type.");
+        return;
+    }
 
+    // 2. The selection menu now only shows vacant spots
+    String selection = (String) JOptionPane.showInputDialog(
+            this, "Select a vacant spot:", "Spot Assignment", 
+            JOptionPane.PLAIN_MESSAGE, null, options.toArray(), options.get(0));
+
+    if (selection != null) {
+        // Extract the ID from "F1-R1-S1 (COMPACT)"
+        String actualId = selection.split(" ")[0];
+        
+        // 3. Perform the database 'Lock'
+        if (facade.lockSpotInDatabase(actualId)) {
             Vehicle v = createVehicle(plate);
-            List<ParkingSpot> options = ParkingLot.getInstance().getAvailableAndReservedSpots(v, plate);
-
-            if (options.isEmpty()) {
-                JOptionPane.showMessageDialog(this, "No valid spots available for this vehicle.");
-                return;
-            }
-
-            String[] spotStrings = options.stream()
-                    .map(s -> ParkingLot.getInstance().getFormattedSpotName(s))
-                    .toArray(String[]::new);
-
-            String selection = (String) JOptionPane.showInputDialog(
-                    this, "Select a spot for " + plate + ":",
-                    "Spot Assignment", JOptionPane.PLAIN_MESSAGE,
-                    null, spotStrings, spotStrings[0]
-            );
-
-            if (selection != null) {
-                String actualId = selection.split(" ")[0];
-                ParkingSpot spot = ParkingLot.getInstance().findSpotById(actualId);
-                if (spot != null) {
-                    facade.parkVehicle(v, spot, "Hourly");
-                    JOptionPane.showMessageDialog(this, "Parked Successfully at " + actualId);
-                    resetPanel();
-                    mainFrame.showHome();
-                }
-            }
-        });
+            ParkingSpot spot = ParkingLot.getInstance().findSpotById(actualId);
+            
+            facade.parkVehicle(v, spot, "Hourly");
+            JOptionPane.showMessageDialog(this, "Successfully Parked at " + actualId);
+            mainFrame.showHome();
+        } else {
+            // Safety popup if the spot was taken while the menu was open
+            JOptionPane.showMessageDialog(this, "Error: This spot was just taken!", "Occupied", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+});
     }
 
     private void resetPanel() {
@@ -155,18 +127,11 @@ public class EntryPanel extends JPanel {
         String type = (String) typeCombo.getSelectedItem(); 
         boolean isHandi = handicappedCheck.isSelected();
         Vehicle v;
+        if ("Motorcycle".equalsIgnoreCase(type)) v = new Motorcycle(plate, 0.0);
+        else if ("SUV/Truck".equalsIgnoreCase(type)) v = new SUV(plate, 0.0);
+        else v = new Car(plate, 0.0);
 
-        if ("Motorcycle".equalsIgnoreCase(type)) {
-            v = new Motorcycle(plate, 0.0);
-        } else if ("SUV/Truck".equalsIgnoreCase(type)) {
-            v = new SUV(plate, 0.0);
-        } else {
-            v = new Car(plate, 0.0);
-        }
-
-        if (isHandi) {
-            v.setHandicappedCardHolder(true);
-        }
+        if (isHandi) v.setHandicappedCardHolder(true);
         return v;
     }
 }

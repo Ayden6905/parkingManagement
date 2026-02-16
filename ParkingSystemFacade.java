@@ -203,15 +203,56 @@ public double checkExistingDebt(String plate) {
 
     //available spots
     public List<String> getAvailableSpotsFor(String plate, String vehicleType, boolean cardHolder) {
-        Vehicle v = vehicleFactory.createVehicle(vehicleType, "TEMP");
+    List<String> displayList = new ArrayList<>();
+    
+    // THE FIX: This SQL strictly ignores 'Occupied' spots
+    String sql = "SELECT spotId, spotType FROM parkingSpot WHERE status = 'Available'";
+
+    try (Connection conn = DatabaseConfig.getConnection();
+         PreparedStatement ps = conn.prepareStatement(sql);
+         ResultSet rs = ps.executeQuery()) {
+
+        Vehicle v = vehicleFactory.createVehicle(vehicleType, plate);
         v.setHandicappedCardHolder(cardHolder);
 
-        List<String> ids = new ArrayList<>();
-        for (ParkingSpot s : ParkingLot.getInstance().getAvailableSpots(v, plate)) {
-            ids.add(s.getSpotId());
+        while (rs.next()) {
+            String id = rs.getString("spotId");
+            String type = rs.getString("spotType");
+            
+            // Still check compatibility (e.g., SUV can't park in Compact)
+            ParkingSpot s = ParkingLot.getInstance().findSpotById(id);
+            
+            if (s != null && s.canParkVehicle(v)) {
+                // Formatting the string to show "ID (TYPE)"
+                displayList.add(id + " (" + type.toUpperCase() + ")");
+            }
         }
-        return ids;
+    } catch (SQLException e) {
+        e.printStackTrace();
     }
+    
+    return displayList;
+}
+    
+    
+public List<String> getAvailableReservedSpotsForUI() {
+    List<String> displayList = new ArrayList<>();
+    
+    // SQL: Join spot table with reservation table to find spots with NO active reservation
+    String sql = "SELECT p.spotId, p.spotType FROM parkingSpot p " +
+                 "LEFT JOIN reservation r ON p.spotId = r.spotId AND r.status = 'ACTIVE' " +
+                 "WHERE p.status = 'Available' AND p.spotType = 'Reserved' AND r.spotId IS NULL";
+
+    try (Connection conn = DatabaseConfig.getConnection();
+         PreparedStatement ps = conn.prepareStatement(sql);
+         ResultSet rs = ps.executeQuery()) {
+
+        while (rs.next()) {
+            displayList.add(rs.getString("spotId") + " (" + rs.getString("spotType").toUpperCase() + ")");
+        }
+    } catch (SQLException e) { e.printStackTrace(); }
+    return displayList;
+}
 
     //payment processing
     public Receipt processPayment(String plate, double finePaid, String method) {
@@ -549,18 +590,44 @@ public List<Object[]> getPastDebtReport() {
     // Default fallback
     return hours * 5.0;
 }
+    public boolean lockSpotInDatabase(String spotId) {
+    // This SQL acts as the 'Gatekeeper'
+    // It only updates if the spot is currently 'Available'
+    String query = "UPDATE parkingSpot SET status = 'Occupied' WHERE spotId = ? AND status = 'Available'";
+    
+    try (Connection conn = DatabaseConfig.getConnection();
+         PreparedStatement pstmt = conn.prepareStatement(query)) {
+        
+        pstmt.setString(1, spotId);
+        int rowsUpdated = pstmt.executeUpdate();
+        
+        // returns true only if the database physically changed the row from Available to Occupied
+        return rowsUpdated > 0;
+        
+    } catch (SQLException e) {
+        e.printStackTrace();
+        return false;
+    }
+}
+    
+    
     
     
     public Ticket parkVehicle(Vehicle v, ParkingSpot spot, String scheme) {
-    // 1. Update the physical spot status (makes it occupied in the UI/Dashboard)
+    // 1. ATTEMPT THE DATABASE LOCK FIRST
+    // This prevents the duplicates shown in your screenshots
+    boolean success = lockSpotInDatabase(spot.getSpotId());
+
+    if (!success) {
+        // If the DB says 0 rows updated, it means someone else took the spot!
+        return null; 
+    }
+
+    // 2. If successful, update the local memory object
     spot.parkVehicle(v);
     
-    // 2. Extract the plate string (assuming Vehicle class has getLicensePlate())
-    // If your compiler complains, check if the method is getPlate() instead
+    // 3. Create the ticket record in the database
     String plate = v.getLicensePlate(); 
-
-    // 3. Reuse your existing handleVehicleEntry logic to update DB and check debt
-    // This will generate the actual database record in the 'ticket' table
     handleVehicleEntry(
         plate, 
         v.getClass().getSimpleName(), 
@@ -568,8 +635,39 @@ public List<Object[]> getPastDebtReport() {
         v.isHandicappedCardHolder()
     );
 
-    // 4. Return the Ticket object so the EntryPanel knows it was successful
+    // 4. Return the Ticket object to confirm success to the UI
     return Ticket.findActiveByPlate(plate);
+}
+    
+    public boolean createReservationInDB(String plate, String spotId, LocalDateTime startTime) {
+    // 1. Check for any existing ACTIVE reservation for this specific spot
+    String checkSql = "SELECT COUNT(*) FROM reservation WHERE spotId = ? AND status = 'ACTIVE'";
+    
+    // 2. Insert the new reservation only if the spot is clear
+    String insertSql = "INSERT INTO reservation (plate, spotId, startTime, status) VALUES (?, ?, ?, 'ACTIVE')";
+
+    try (Connection conn = DatabaseConfig.getConnection()) {
+        // Pre-check: Ensure no one else reserved it while the user had the window open
+        try (PreparedStatement checkPs = conn.prepareStatement(checkSql)) {
+            checkPs.setString(1, spotId);
+            ResultSet rs = checkPs.executeQuery();
+            if (rs.next() && rs.getInt(1) > 0) {
+                return false; // Stop! Spot is already reserved by someone else
+            }
+        }
+
+        // Execute the reservation
+        try (PreparedStatement insertPs = conn.prepareStatement(insertSql)) {
+            insertPs.setString(1, plate);
+            insertPs.setString(2, spotId);
+            insertPs.setTimestamp(3, java.sql.Timestamp.valueOf(startTime));
+            int rows = insertPs.executeUpdate();
+            return rows > 0;
+        }
+    } catch (SQLException e) {
+        e.printStackTrace();
+        return false;
+    }
 }
     
 

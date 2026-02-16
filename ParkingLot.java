@@ -105,31 +105,39 @@ public class ParkingLot {
     
     
     //search for spot
-    public List<ParkingSpot> getAvailableSpots(Vehicle v)
-    {
-        List<ParkingSpot> result = new ArrayList<>();
-        LocalDateTime now = LocalDateTime.now();
-        
-        for (Floor floor : floors)
-        {
-            for (ParkingSpot spot : floor.getAllSpots())
-            {
-                if (!spot.isAvailable()) continue;
-                if (!spot.canParkVehicle(v)) continue;
-                
-                //check for reservation (only for ReservedSpot)
-                if (spot instanceof ReservedSpot)
-                {
-                    Reservation r = findValidReservationFor(v, spot, now);
-                    if (r == null) continue; // no reservation, cannot use reserved spot
-                }
-                
-                result.add(spot);
-            }
-        }
-        return result;
-    }
+public List<ParkingSpot> getAvailableSpots(Vehicle v, String plate) {
+    List<ParkingSpot> result = new ArrayList<>();
+    LocalDateTime now = LocalDateTime.now();
     
+    for (Floor floor : floors) {
+        for (ParkingSpot spot : floor.getAllSpots()) {
+            
+            // --- REQUIREMENT 1: Must be Vacant ---
+            // This prevents the duplicates shown in your screenshots
+            if (spot.getStatus() != SpotStatus.AVAILABLE) {
+                continue; 
+            }
+
+            // --- REQUIREMENT 2: Vehicle Compatibility ---
+            if (!spot.canParkVehicle(v)) {
+                continue;
+            }
+            
+            // --- REQUIREMENT 3: Reservation Check ---
+            if (spot instanceof ReservedSpot) {
+                Reservation r = findValidReservationFor(v, spot, now);
+                if (r == null) continue; 
+            }
+            
+            result.add(spot);
+        }
+    }
+    return result;
+}
+
+
+
+
     //find the reservation
     private Reservation findValidReservationFor(Vehicle v, ParkingSpot spot, LocalDateTime now)
     {
@@ -274,31 +282,7 @@ public Ticket parkVehicle(Vehicle v, ParkingSpot s, String scheme) {
         return false;
     }
     
-    public List<ParkingSpot> getAvailableSpots(Vehicle v, String plate) {
-
-        List<ParkingSpot> result = new ArrayList<>();
-        LocalDateTime now = LocalDateTime.now();
-
-        boolean hasReservation = hasAnyActiveReservationForPlate(plate, now);
-
-        for (Floor floor : floors) {
-            for (ParkingSpot spot : floor.getAllSpots()) {
-
-                if (!spot.isAvailable()) {
-                    continue;
-                }
-                if (!spot.canParkVehicle(v)) {
-                    continue;
-                }
-                
-                if (spot instanceof ReservedSpot && !hasReservation) {
-                    continue;
-                }
-                result.add(spot);
-            }
-        }
-        return result;
-    }
+   
     
 // Add this helper method to ParkingLot.java
 public String getFormattedSpotName(ParkingSpot spot) {
