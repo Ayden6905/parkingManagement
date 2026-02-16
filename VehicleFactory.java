@@ -8,26 +8,19 @@ package com.mycompany.parkingmanagement;
  * @author User
  */
 public class VehicleFactory {
-
+    public Vehicle createVehicle(String type, String plate, double debt) {
+        if (type == null) return new Car(plate, debt);
+        
+        switch (type.toUpperCase()) {
+            case "MOTORCYCLE": return new Motorcycle(plate, debt);
+            case "SUV":        return new SUV(plate, debt);
+            case "HANDICAPPED": return new HandicappedVehicle(plate, debt);
+            default:           return new Car(plate, debt);
+        }
+    }
+    
+    // Overload for convenience
     public Vehicle createVehicle(String type, String plate) {
         return createVehicle(type, plate, 0.0);
-    }
-
-    public Vehicle createVehicle(String type, String plate, double debt) {
-        Vehicle v;
-        String vehicleType = (type == null) ? "car" : type.toLowerCase();
-
-        switch (vehicleType) {
-            case "motorcycle":
-                v = new Motorcycle(plate, debt);
-                break;
-            case "suv":
-                v = new SUV(plate, debt);
-                break;
-            default:
-                v = new Car(plate, debt);
-                break;
-        }
-        return v; // MUST have this line!
     }
 }

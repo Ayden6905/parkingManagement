@@ -36,7 +36,7 @@ public class ExitPanel extends JPanel {
 
         btnProceed.addActionListener(e -> {
             String plate = plateField.getText().trim();
-            currentSummary = facade.getParkingSummary(plate, 3.00); 
+            currentSummary = facade.getParkingSummary(plate); 
             if (currentSummary != null) {
                 showSummary();
             } else {
@@ -102,7 +102,7 @@ public class ExitPanel extends JPanel {
         double totalDueIncludingFines = currentSummary.getParkingFee() + currentSummary.getFineAmount();
 
 // Task: Execute payment logic and persist to DB
-            Receipt receipt = facade.processPayment(currentSummary.getPlate(), 3.00, finePaid, method);
+            Receipt receipt = facade.processPayment(currentSummary.getPlate(), finePaid, method);
             facade.finalizeExit(plate, total, totalDueIncludingFines);
             showReceipt(receipt);
         }
