@@ -523,4 +523,28 @@ public List<Object[]> getPastDebtReport() {
         }
         return hours * spot.getHourlyRate();
     }
+    
+    
+    public Ticket parkVehicle(Vehicle v, ParkingSpot spot, String scheme) {
+    // 1. Update the physical spot status (makes it occupied in the UI/Dashboard)
+    spot.parkVehicle(v);
+    
+    // 2. Extract the plate string (assuming Vehicle class has getLicensePlate())
+    // If your compiler complains, check if the method is getPlate() instead
+    String plate = v.getLicensePlate(); 
+
+    // 3. Reuse your existing handleVehicleEntry logic to update DB and check debt
+    // This will generate the actual database record in the 'ticket' table
+    handleVehicleEntry(
+        plate, 
+        v.getClass().getSimpleName(), 
+        spot.getSpotId(), 
+        v.isHandicappedCardHolder()
+    );
+
+    // 4. Return the Ticket object so the EntryPanel knows it was successful
+    return Ticket.findActiveByPlate(plate);
+}
+    
+
 }

@@ -16,11 +16,12 @@ import java.util.stream.Collectors;
 /**
  * Panel to handle user reservations for specific parking spots.
  */
+
 public class ReservationPanel extends JPanel {   
     private ParkingSystemFacade facade;
     private MainFrame mainFrame;
     private JComboBox<String> spotDropdown;
-    private JTextField plateField; // Declared at class level
+    private JTextField plateField;
     private JLabel msg;
     
     public ReservationPanel(ParkingSystemFacade facade, MainFrame mainFrame) {
@@ -39,20 +40,18 @@ public class ReservationPanel extends JPanel {
 
         // --- Input Fields ---
         plateField = new JTextField(15);
-        
         spotDropdown = new JComboBox<>();
-        refreshAvailableReservedSpots(); // Initial load
+        refreshAvailableReservedSpots(); 
 
         SpinnerNumberModel hoursModel = new SpinnerNumberModel(2, 1, 24, 1);
         JSpinner hoursSpinner = new JSpinner(hoursModel);
-
-        msg = new JLabel(" "); // Space keeps layout consistent
+        msg = new JLabel(" "); 
 
         // --- Buttons ---
         JButton btnCreate = new JButton("Create Reservation");
         JButton btnBack = new JButton("Back");
 
-        // --- UI Layout ---
+        // --- Layout Mapping ---
         gbc.gridx = 0; gbc.gridy = 0; gbc.gridwidth = 2; 
         add(title, gbc);
         
@@ -77,39 +76,40 @@ public class ReservationPanel extends JPanel {
 
         btnCreate.addActionListener(e -> {
             String plate = plateField.getText().trim();
-            String spotId = (String) spotDropdown.getSelectedItem();
+            // FIX 1: Correctly grab the object from the dropdown
+            Object selectedItem = spotDropdown.getSelectedItem();
 
             // Validation
-            if (plate.isEmpty() || spotId == null || spotId.equals("No Reserved Spots Available")) {
+            if (plate.isEmpty() || selectedItem == null || selectedItem.toString().equals("No Reserved Spots Available")) {
                 msg.setText("Plate and Spot Selection are required.");
                 msg.setForeground(Color.RED);
                 return;
             }
 
-            ParkingSpot spot = ParkingLot.getInstance().findSpotById(spotId);
+            // FIX 2: Extract the actual ID from "F1-R2-S1 (Reserved)"
+            String fullText = selectedItem.toString();
+            String actualId = fullText.split(" ")[0]; 
+
+            ParkingSpot spot = ParkingLot.getInstance().findSpotById(actualId);
             
             int hours = (Integer) hoursSpinner.getValue();
             LocalDateTime start = LocalDateTime.now();
             LocalDateTime end = start.plusHours(hours);
-
-            String reservationId = "R-" + plate + "-" + System.currentTimeMillis();
+            String resId = "R-" + plate + "-" + System.currentTimeMillis();
 
             // Create object
             Reservation r = new Reservation(
-                    reservationId, plate, (ReservedSpot) spot, start, end, ReservationStatus.ACTIVE
+                    resId, plate, (ReservedSpot) spot, start, end, ReservationStatus.ACTIVE
             );
             
             ParkingRepository repo = new ParkingRepository();
             if (repo.createReservation(r)) {
-                // 1. Sync Memory: Mark spot as OCCUPIED
                 spot.setStatus(SpotStatus.OCCUPIED); 
                 ParkingLot.getInstance().addReservation(r);
                 
-                // 2. Feedback to User
-                msg.setText("Success! Spot " + spotId + " reserved for " + plate);
-                msg.setForeground(new Color(0, 153, 0)); // Success Green
+                msg.setText("Success! Spot " + actualId + " reserved for " + plate);
+                msg.setForeground(new Color(0, 153, 0)); 
                 
-                // 3. Reset UI for next use
                 plateField.setText("");
                 refreshAvailableReservedSpots(); 
             } else {
@@ -119,16 +119,14 @@ public class ReservationPanel extends JPanel {
         });
     }
 
-    /**
-     * Updates the JComboBox with spots that are of type ReservedSpot and are currently Available.
-     */
     public void refreshAvailableReservedSpots() {
         spotDropdown.removeAllItems();
         
+        // This leverages the toString() we added to ParkingSpot earlier
         List<String> availableReserved = ParkingLot.getInstance().getSpots().values().stream()
             .filter(s -> s instanceof ReservedSpot)
             .filter(s -> s.getStatus() == SpotStatus.AVAILABLE)
-            .map(ParkingSpot::getSpotId)
+            .map(ParkingSpot::toString) 
             .collect(Collectors.toList());
 
         if (availableReserved.isEmpty()) {
