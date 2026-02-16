@@ -100,35 +100,7 @@ public class ParkingLot {
         default:
             throw new IllegalArgumentException("Invalid row: " + row);
     }
-}
-    
-    
-    
-    //search for spot
-    public List<ParkingSpot> getAvailableSpots(Vehicle v)
-    {
-        List<ParkingSpot> result = new ArrayList<>();
-        LocalDateTime now = LocalDateTime.now();
-        
-        for (Floor floor : floors)
-        {
-            for (ParkingSpot spot : floor.getAllSpots())
-            {
-                if (!spot.isAvailable()) continue;
-                if (!spot.canParkVehicle(v)) continue;
-                
-                //check for reservation (only for ReservedSpot)
-                if (spot instanceof ReservedSpot)
-                {
-                    Reservation r = findValidReservationFor(v, spot, now);
-                    if (r == null) continue; // no reservation, cannot use reserved spot
-                }
-                
-                result.add(spot);
-            }
-        }
-        return result;
-    }
+}                
     
     //find the reservation
     private Reservation findValidReservationFor(Vehicle v, ParkingSpot spot, LocalDateTime now)
@@ -275,30 +247,48 @@ public Ticket parkVehicle(Vehicle v, ParkingSpot s, String scheme) {
     }
     
     public List<ParkingSpot> getAvailableSpots(Vehicle v, String plate) {
-
         List<ParkingSpot> result = new ArrayList<>();
-        LocalDateTime now = LocalDateTime.now();
 
-        boolean hasReservation = hasAnyActiveReservationForPlate(plate, now);
+        // 1) Check if this plate currently has an ACTIVE reservation
+        ParkingRepository repo = new ParkingRepository();
+        List<String> reservedIds = repo.getReservedSelectableSpotIds(plate);
+        boolean hasReservationNow = reservedIds != null && !reservedIds.isEmpty();
 
+        // 2) Loop all spots and filter
         for (Floor floor : floors) {
             for (ParkingSpot spot : floor.getAllSpots()) {
 
+                // Hide OCCUPIED spots
                 if (!spot.isAvailable()) {
                     continue;
                 }
+
+                // Vehicle suitability (compact / regular / handicapped rules)
                 if (!spot.canParkVehicle(v)) {
                     continue;
                 }
-                
-                if (spot instanceof ReservedSpot && !hasReservation) {
-                    continue;
-                }
+
+//                // Reserved visibility rule
+//                if (spot.getSpotType() == SpotType.RESERVED) {
+//
+//                    // Has reservation: only show THEIR reserved spot
+//                    if (hasReservationNow) {
+//                        if (!reservedIds.contains(spot.getSpotId())) {
+//                            continue;
+//                        }
+//                    } // No reservation: hide reserved spots
+//                    else {
+//                        continue;
+//                    }
+//                }
+
                 result.add(spot);
             }
         }
+
         return result;
     }
+
     
     public List<String> getReservedSpotIdsForPlate(String plate) {
         List<String> result = new ArrayList<>();
@@ -328,6 +318,7 @@ public Ticket parkVehicle(Vehicle v, ParkingSpot s, String scheme) {
         }
         return result;
     }
+    
 // Add this helper method to ParkingLot.java
 public String getFormattedSpotName(ParkingSpot spot) {
     String type = "Regular"; // Default

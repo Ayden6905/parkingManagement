@@ -11,6 +11,7 @@ import java.sql.*;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.*;
 
 public class ParkingRepository {
 
@@ -279,31 +280,39 @@ public List<Object[]> getOccupancyDetailsByFloor(int floor) {
         List<String> ids = new ArrayList<>();
 
         String sql
-                = "SELECT r.spotId "
-                + "FROM reservation r "
-                + "JOIN parkingSpot p ON p.spotId = r.spotId "
-                + "LEFT JOIN ticket t ON t.spotId = r.spotId AND t.exitTime IS NULL "
-                + "WHERE UPPER(r.plate) = UPPER(?) "
-                + "  AND r.status = 'ACTIVE' "
-                + "  AND NOW() BETWEEN r.startTime AND r.endTime "
-                + "  AND p.status = 'Available' "
-                + "  AND t.spotId IS NULL";
+                = "SELECT spotId "
+                + "FROM reservation "
+                + "WHERE UPPER(TRIM(plate)) = ? "
+                + "  AND UPPER(status) = 'ACTIVE' "
+                + "  AND NOW() <= endTime";   // ✅ still valid, not expired
 
         try (Connection conn = DatabaseConfig.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
 
-            ps.setString(1, plate);
+            ps.setString(1, plate.trim().toUpperCase());
 
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     ids.add(rs.getString("spotId"));
                 }
             }
-
         } catch (SQLException e) {
             e.printStackTrace();
         }
-
         return ids;
+    }
+    
+    public void expirePastReservations() {
+        String sql
+                = "UPDATE reservation "
+                + "SET status = 'EXPIRED' "
+                + "WHERE UPPER(status) = 'ACTIVE' "
+                + "  AND endTime < NOW()";
+
+        try (Connection conn = DatabaseConfig.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
     
     public List<String> getSelectableSpotIds(String plate, String vehicleType, boolean isCardHolder) {
@@ -385,6 +394,31 @@ public List<Object[]> getOccupancyDetailsByFloor(int floor) {
             e.printStackTrace();
             return false;
         }
+    }
+    
+    public boolean hasValidReservationForSpotNow(String plate, String spotId) {
+        String sql
+                = "SELECT COUNT(*) "
+                + "FROM reservation "
+                + "WHERE UPPER(TRIM(plate)) = ? "
+                + "  AND spotId = ? "
+                + "  AND UPPER(status) = 'ACTIVE' "
+                + "  AND NOW() <= endTime"; // valid until expiry (your chosen rule)
+
+        try (Connection conn = DatabaseConfig.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, plate.trim().toUpperCase());
+            ps.setString(2, spotId);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1) > 0;
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
     }
 }
 

@@ -14,9 +14,10 @@ public class ReservedSpot extends ParkingSpot {
     }
     
     @Override
-    public boolean canParkVehicle(Vehicle v)
-    {
+    public boolean canParkVehicle(Vehicle v) {
+        if (v == null) { return false; }
+
         VehicleType t = v.getVehicleType();
-        return t == VehicleType.CAR || t == VehicleType.SUV || t == VehicleType.HANDICAPPED;
+        return t == VehicleType.MOTORCYCLE || t == VehicleType.CAR || t == VehicleType.SUV || t == VehicleType.HANDICAPPED;
     }
 }

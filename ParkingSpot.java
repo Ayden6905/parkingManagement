@@ -85,8 +85,8 @@ public abstract class ParkingSpot {
         public abstract boolean canParkVehicle(Vehicle vehicle);
         
         
-        @Override
+    @Override
     public String toString() {
-        return this.spotId + " (" + this.getClass().getSimpleName().replace("Spot", "") + ")";
+        return spotId + " (" + spotType + ")";
     }
 }
