@@ -2,7 +2,7 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
-package com.mycompany.parkingmanagement;
+
 /**
  *
  * @author NurqistinaAtashah
@@ -83,7 +83,14 @@ add(msgLabel, gbc);
         btnPark.addActionListener(e -> {
             String plate = plateField.getText().trim();
             if (plate.isEmpty()) {
-                JOptionPane.showMessageDialog(this, "Please enter license plate!");
+                JOptionPane.showMessageDialog(this, "Please enter license plate.");
+                return;
+            }
+                
+            List<String> optionsToShow = facade.getAvailableSpotsFor(plate, type, isCardHolder);
+
+            if (optionsToShow.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "No available spots.");
                 return;
             }
 
@@ -98,6 +105,48 @@ add(msgLabel, gbc);
                 return;
             }
 
+            // --- SPOT SELECTION ---            
+            String titleMsg = "Choose Spot";
+            String selectedSpot = (String) JOptionPane.showInputDialog(
+                    this,
+                    "Select Available Spot:",
+                    titleMsg,
+                    JOptionPane.PLAIN_MESSAGE,
+                    null,
+                    optionsToShow.toArray(),
+                    optionsToShow.get(0)
+            );
+
+
+            // --- TICKET ISSUANCE ---
+            String ticketResult = facade.handleVehicleEntry(plate, type, selectedSpot, isCardHolder);
+
+            if (ticketResult == null || ticketResult.startsWith("Error")) {
+                JOptionPane.showMessageDialog(
+                        this,
+                        ticketResult,
+                        "Entry Error",
+                        JOptionPane.ERROR_MESSAGE
+                );
+                return;
+            }
+
+            plateField.setText("");
+            handicappedCheck.setSelected(false);
+
+            JTextArea textArea = new JTextArea(ticketResult);
+            textArea.setEditable(false);
+            JOptionPane.showMessageDialog(
+                    this,
+                    new JScrollPane(textArea),
+                    "Ticket Issued",
+                    JOptionPane.PLAIN_MESSAGE
+            );
+
+            mainFrame.showHome();
+        }); // This closes the btnPark action listener
+    } // This closes the EntryPanel constructor
+} // This closes the EntryPanel class
             // Convert spots to "ID (Type)" strings for the pop-up
             String[] spotStrings = options.stream()
                     .map(s -> ParkingLot.getInstance().getFormattedSpotName(s))

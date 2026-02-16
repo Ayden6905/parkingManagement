@@ -2,7 +2,7 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
-package com.mycompany.parkingmanagement;
+
 /**
  *
  * @author NurqistinaAtashah
@@ -300,6 +300,34 @@ public Ticket parkVehicle(Vehicle v, ParkingSpot s, String scheme) {
         return result;
     }
     
+    public List<String> getReservedSpotIdsForPlate(String plate) {
+        List<String> result = new ArrayList<>();
+        LocalDateTime now = LocalDateTime.now();
+
+        if (plate == null) {
+            return result;
+        }
+        plate = plate.trim();
+        if (plate.isEmpty()) {
+            return result;
+        }
+
+        for (Reservation r : reservations) {
+            if (r.getLicensePlate().equalsIgnoreCase(plate)
+                    && r.getStatus() == ReservationStatus.ACTIVE
+                    && !now.isBefore(r.getStartTime())
+                    && !now.isAfter(r.getEndTime())) {
+
+                //to show if the spot is available or not
+                String spotId = r.getSpotId().getSpotId();
+                ParkingSpot spot = findSpotById(spotId);
+                if (spot != null && spot.isAvailable()) {
+                    result.add(spotId);
+                }
+            }
+        }
+        return result;
+    }
 // Add this helper method to ParkingLot.java
 public String getFormattedSpotName(ParkingSpot spot) {
     String type = "Regular"; // Default

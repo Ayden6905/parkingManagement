@@ -2,7 +2,7 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
-package com.mycompany.parkingmanagement;
+
 /**
  *
  * @author NurqistinaAtashah
@@ -203,6 +203,16 @@ public double checkExistingDebt(String plate) {
 
     //available spots
     public List<String> getAvailableSpotsFor(String plate, String vehicleType, boolean cardHolder) {
+
+        ParkingRepository repo = new ParkingRepository();
+
+        // 1) If the plate has an active reservation, ONLY return reserved spot
+        List<String> reserved = repo.getReservedSelectableSpotIds(plate);
+        if (!reserved.isEmpty()) {
+            return reserved;
+        }
+
+        // 2) Otherwise do normal available spots logic
         Vehicle v = vehicleFactory.createVehicle(vehicleType, "TEMP");
         v.setHandicappedCardHolder(cardHolder);
 
@@ -211,6 +221,12 @@ public double checkExistingDebt(String plate) {
             ids.add(s.getSpotId());
         }
         return ids;
+    }
+    
+    //for reservation spot
+    public List<String> getReservedSpotsForPlate(String plate) {
+        ParkingRepository repo = new ParkingRepository();
+        return repo.getReservedSelectableSpotIds(plate);
     }
 
     //payment processing
