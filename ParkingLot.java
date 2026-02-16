@@ -199,18 +199,18 @@ public Receipt exitVehicle(String licensePlate) {
     return allSpotsMap;
 }
     
-    public double calculateOccupancy()
-    {
-        int total = 0;
-        int occupied = 0;
-        
-        for (Floor f : floors)
-        {
-            total += f.getAllSpots().size();
-            occupied += f.getOccupiedSpots().size();
-        }
-        return total == 0 ? 0.0 : (occupied * 1.0/total);
+    public double calculateOccupancy() {
+    int total = 0;
+    int occupied = 0;
+    
+    for (Floor f : floors) {
+        total += f.getAllSpots().size();
+        // Uses your existing Floor method to count occupied spots
+        occupied += f.getOccupiedSpots().size(); 
     }
+    // Returns a decimal (e.g., 0.15 for 15% occupancy)
+    return total == 0 ? 0.0 : ((double) occupied / total);
+}
     
     public void setFineStrategy(FineStrategy strategy)
     {
@@ -328,5 +328,49 @@ public Ticket parkVehicle(Vehicle v, ParkingSpot s, String scheme) {
         }
         return result;
     }
+// Add this helper method to ParkingLot.java
+public String getFormattedSpotName(ParkingSpot spot) {
+    String type = "Regular"; // Default
+    if (spot instanceof CompactSpot) type = "Compact";
+    else if (spot instanceof ReservedSpot) type = "Reserved";
+    else if (spot instanceof HandicappedSpot) type = "Handicapped";
+    
+    return spot.getSpotId() + " (" + type + ")";
+}
+
+public List<ParkingSpot> getAvailableAndReservedSpots(Vehicle v, String plate) {
+    List<ParkingSpot> compatibleSpots = new ArrayList<>();
+    
+    for (Floor floor : floors) {
+        for (ParkingSpot s : floor.getAllSpots()) {
+            
+            // 1. If someone is already parked there, nobody else can.
+            if (!s.isAvailable()) continue;
+
+            // 2. Logic: Who can see this spot?
+            boolean showSpot = false;
+
+            // Rule A: Reserved spots are now open to everyone (but subject to fines later)
+            if (s instanceof ReservedSpot) {
+                showSpot = true; 
+            }
+            // Rule B: Handicapped people can see everything
+            else if (v.isHandicappedCardHolder()) {
+                showSpot = true;
+            }
+            // Rule C: Standard Type Compatibility
+            else {
+                if (v instanceof Motorcycle && s instanceof CompactSpot) showSpot = true;
+                else if (v instanceof SUV && s instanceof RegularSpot) showSpot = true;
+                else if (v instanceof Car && (s instanceof RegularSpot || s instanceof CompactSpot)) showSpot = true;
+            }
+
+            if (showSpot) {
+                compatibleSpots.add(s);
+            }
+        }
+    }
+    return compatibleSpots;
+}
 
 }

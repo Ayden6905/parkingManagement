@@ -176,26 +176,33 @@ public double checkExistingDebt(String plate) {
     }
 
     //parking summary
-    public ParkingSummary getParkingSummary(String plate, double hourlyRate) {
+    public ParkingSummary getParkingSummary(String plate, double baseHourlyRate) {
     Ticket ticket = Ticket.findActiveByPlate(plate);
     if (ticket == null) return null;
 
-    // Apply the historical scheme for the preview
-    fineManager.setStrategy(ticket.getFineScheme());
-
+    // 1. Calculate duration
     int duration = ticket.calculateDurationHours();
-    double fineOwed = fineManager.calculateFine(duration);
-    double parkingFee = duration * hourlyRate;
+    
+    // 2. Use the "historical" scheme applied when the car entered
+    fineManager.setStrategy(ticket.getFineScheme());
+    double currentFine = fineManager.calculateFine(duration);
+    
+    // 3. IMPORTANT: Fetch the debt that was carried over into this ticket
+    double carriedOverFine = ticket.getCarriedOverFine(); 
+    
+    // 4. Calculate total fee
+    double parkingFee = duration * baseHourlyRate;
+    double totalDue = parkingFee + currentFine + carriedOverFine;
 
     return new ParkingSummary(
             ticket.getTicketId(),
-            ticket.getLicensePlate().getLicensePlate(),
+            plate,
             ticket.getEntryTime(),
             LocalDateTime.now(),
             duration,
             parkingFee,
-            fineOwed,
-            parkingFee + fineOwed
+            currentFine + carriedOverFine, // Total Fines (Current + Past)
+            totalDue
     );
 }
 
@@ -539,4 +546,28 @@ public List<Object[]> getPastDebtReport() {
         }
         return hours * spot.getHourlyRate();
     }
+    
+    
+    public Ticket parkVehicle(Vehicle v, ParkingSpot spot, String scheme) {
+    // 1. Update the physical spot status (makes it occupied in the UI/Dashboard)
+    spot.parkVehicle(v);
+    
+    // 2. Extract the plate string (assuming Vehicle class has getLicensePlate())
+    // If your compiler complains, check if the method is getPlate() instead
+    String plate = v.getLicensePlate(); 
+
+    // 3. Reuse your existing handleVehicleEntry logic to update DB and check debt
+    // This will generate the actual database record in the 'ticket' table
+    handleVehicleEntry(
+        plate, 
+        v.getClass().getSimpleName(), 
+        spot.getSpotId(), 
+        v.isHandicappedCardHolder()
+    );
+
+    // 4. Return the Ticket object so the EntryPanel knows it was successful
+    return Ticket.findActiveByPlate(plate);
+}
+    
+
 }

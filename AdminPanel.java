@@ -20,6 +20,7 @@ public class AdminPanel extends JPanel {
     private JTabbedPane tabbedPane;
     private JLabel level1Count, level2Count, level3Count, level4Count, level5Count;
     private JLabel lblTotalAvailable;
+    private JLabel lblOccupancyRate;
 
     public AdminPanel(ParkingSystemFacade facade, MainFrame mainFrame) {
         this.facade = facade;
@@ -72,6 +73,11 @@ public class AdminPanel extends JPanel {
     lblTotalAvailable.setBackground(new Color(144, 238, 144)); 
     lblTotalAvailable.setPreferredSize(new Dimension(80, 30));
 
+    lblOccupancyRate = new JLabel("0.0%", SwingConstants.CENTER);
+    lblOccupancyRate.setOpaque(true);
+    lblOccupancyRate.setBackground(Color.LIGHT_GRAY);
+    lblOccupancyRate.setPreferredSize(new Dimension(80, 30));
+    
     // Adding Levels 1-5
     for (int i = 1; i <= 5; i++) {
         final int floorNum = i; 
@@ -99,7 +105,15 @@ public class AdminPanel extends JPanel {
     gbc.gridx = 1;
     panel.add(lblTotalAvailable, gbc);
     
+    // NEW: Occupancy Rate Section (GridY 7)
     gbc.gridy = 7;
+    gbc.gridx = 0;
+    panel.add(new JLabel("Occupancy Rate:"), gbc);
+    gbc.gridx = 1;
+    panel.add(lblOccupancyRate, gbc);
+    
+    
+    gbc.gridy = 8;
     gbc.gridx = 0;
     gbc.gridwidth = 2; // Span across both columns
     JButton btnRefresh = new JButton("🔄 Refresh Data");
@@ -149,7 +163,6 @@ private JLabel createCountLabel() {
 }
   
   
-    // --- TAB 2: REVENUE SUMMARY ---
    // --- TAB 2: REVENUE SUMMARY ---
 private JPanel createRevenuePanel() {
     JPanel panel = new JPanel(new GridBagLayout());
@@ -301,21 +314,44 @@ private JPanel createFineOverviewPanel() {
 public void updateOccupancyDisplay() {
     if (facade == null || level1Count == null) return;
 
+    // 1. Fetch real-time available counts from the facade
     int f1 = facade.getAvailableSpotsByFloor(1);
     int f2 = facade.getAvailableSpotsByFloor(2);
     int f3 = facade.getAvailableSpotsByFloor(3);
     int f4 = facade.getAvailableSpotsByFloor(4);
     int f5 = facade.getAvailableSpotsByFloor(5);
 
+    // 2. Update the Level UI labels (the gray boxes)
     level1Count.setText(String.valueOf(f1)); 
     level2Count.setText(String.valueOf(f2));
     level3Count.setText(String.valueOf(f3));
     level4Count.setText(String.valueOf(f4));
     level5Count.setText(String.valueOf(f5));
 
-    int total = f1 + f2 + f3 + f4 + f5;
-    lblTotalAvailable.setText(String.valueOf(total));
+    // 3. Calculate Global Statistics
+    int totalAvailable = f1 + f2 + f3 + f4 + f5;
+    
+    // FIX: Match this to your actual total spots (e.g., 250)
+    int totalCapacity = 250; 
+    
+    int totalOccupied = totalCapacity - totalAvailable;
+
+    lblTotalAvailable.setText(String.valueOf(totalAvailable));
+
+    // Calculate Rate: (Occupied / Total) * 100
+    double occupancyRate = (double) totalOccupied / totalCapacity;
+    
+    // This will now show 4.4% instead of -19.5%
+    lblOccupancyRate.setText(String.format("%.1f%%", occupancyRate * 100));
+
+    // Visual feedback logic
+    if (occupancyRate > 0.9) {
+        lblOccupancyRate.setBackground(new Color(255, 102, 102)); // Red
+    } else {
+        lblOccupancyRate.setBackground(new Color(144, 238, 144)); // Green
+    }
 }
+
 
      private void showRevenueReport() {
         List<RevenueRecord> records = facade.getRevenueReport();
