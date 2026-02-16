@@ -119,34 +119,45 @@ public class EntryPanel extends JPanel {
             }
 
             // --- Get spot IDs from FACADE (this is the single source of truth) ---
-            List<String> optionsToShow = facade.getAvailableSpotsFor(plate, type, isCardHolder);
+            // 1) Get spot IDs from facade
+            List<String> spotIds = facade.getAvailableSpotsFor(plate, type, isCardHolder);
 
-            if (optionsToShow == null || optionsToShow.isEmpty()) {
+            if (spotIds == null || spotIds.isEmpty()) {
                 JOptionPane.showMessageDialog(this, "No available spots.");
                 return;
             }
 
-            // If plate has reservation, facade will return only reserved spot
-            String dialogTitle = "Choose Spot";
-            List<String> reservedCheck = facade.getReservedSpotsForPlate(plate);
-            if (reservedCheck != null && !reservedCheck.isEmpty()) {
-                dialogTitle = "Choose Reserved Spot (Active Reservation)";
+            // 2) Convert IDs: ParkingSpot objects (so "(RESERVED)" shows)
+            List<ParkingSpot> spotObjects = new ArrayList<>();
+            for (String id : spotIds) {
+                ParkingSpot ps = ParkingLot.getInstance().findSpotById(id);
+                if (ps != null && ps.isAvailable()) {
+                    spotObjects.add(ps);
+                }
             }
 
-            // --- Spot selection (String IDs) ---
-            String selectedSpotId = (String) JOptionPane.showInputDialog(
-                    this,
-                    "Select Available Spot:",
-                    dialogTitle,
-                    JOptionPane.PLAIN_MESSAGE,
-                    null,
-                    optionsToShow.toArray(new String[0]),
-                    optionsToShow.get(0)
-            );
-
-            if (selectedSpotId == null) {
+            if (spotObjects.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "No available spots.");
                 return;
             }
+
+            // 3) Show dropdown using ParkingSpot objects
+            ParkingSpot selected = (ParkingSpot) JOptionPane.showInputDialog(
+                    this,
+                    "Select Available Spot:",
+                    "Choose Spot",
+                    JOptionPane.PLAIN_MESSAGE,
+                    null,
+                    spotObjects.toArray(new ParkingSpot[0]),
+                    spotObjects.get(0)
+            );
+
+            if (selected == null) {
+                return;
+            }
+
+            // 4) Extract selected spot ID
+            String selectedSpotId = selected.getSpotId();
 
             // --- Ticket issuance ---
             String ticketResult = facade.handleVehicleEntry(plate, type, selectedSpotId, isCardHolder);
