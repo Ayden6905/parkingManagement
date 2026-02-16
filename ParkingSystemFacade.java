@@ -61,60 +61,64 @@ public class ParkingSystemFacade {
 
     //vehicle entry
     public String handleVehicleEntry(String plate, String vehicleType, String spotId, boolean isHandicappedCardHolder) {
+
         if (plate == null || plate.trim().isEmpty()) {
             return "Error: License plate required.";
         }
 
-        // Check if car is already inside
         if (Ticket.findActiveByPlate(plate) != null) {
             return "Error: Vehicle with plate " + plate + " is already inside.";
         }
 
         try {
-            // 1) Old fines already in account
+            // 1) Existing unpaid fines
             double existingDebt = checkExistingDebt(plate);
 
-            // 2) Scheme locked at entry (this gets stored into ticket)
+            // 2) Lock fine scheme at entry
             String activeScheme = getCurrentFineScheme();
 
-            // 3) Validate spot exists
+            // 3) Validate spot
             ParkingSpot chosenSpot = ParkingLot.getInstance().findSpotById(spotId);
             if (chosenSpot == null) {
                 return "Error: Spot not found.";
             }
 
-            // 4) RESERVED SPOT MISUSE fine (scheme-based, locked at entry)
+            // 4) RESERVED SPOT MISUSE CHECK
             double misuseFine = 0.0;
 
-            if (chosenSpot.getSpotType() == SpotType.RESERVED) {
+            boolean isReservedSpot
+                    = (chosenSpot instanceof ReservedSpot)
+                    || chosenSpot.getSpotType() == SpotType.RESERVED;
+
+            if (isReservedSpot) {
                 ParkingRepository repo = new ParkingRepository();
-                boolean hasReservation = repo.hasValidReservationForSpotNow(plate, spotId);
+
+                boolean hasReservation
+                        = repo.hasValidReservationForSpotNow(plate, spotId);
 
                 if (!hasReservation) {
-                    // Use the entry scheme to compute this fine (per driver)
-                    FineManager tempFineManager = new FineManager();
-                    tempFineManager.setStrategy(activeScheme);
-                    
-                    misuseFine = tempFineManager.calculateFine(1);
+                    FineManager fm = new FineManager();
+                    fm.setStrategy(activeScheme);
 
-                    // Save it into driver's account immediately
-                    tempFineManager.postponeFineToAccount(plate, misuseFine);
-
-                    // Update the debt shown on receipt + stored into ticket
+                    misuseFine = fm.calculateFine(1);
                     existingDebt += misuseFine;
                 }
             }
 
-            // 5) Create ticket (stores schemeUsedAtEntry + current debt)
-            ticketService.createTicket(plate, vehicleType, spotId, isHandicappedCardHolder, activeScheme, existingDebt);
+            // 5) CREATE TICKET
+            ticketService.createTicket(
+                    plate,
+                    vehicleType,
+                    spotId,
+                    isHandicappedCardHolder,
+                    activeScheme,
+                    existingDebt
+            );
 
-            // 6) Update in-memory spot so OCCUPIED spots disappear from lists
-            ParkingSpot spot = ParkingLot.getInstance().findSpotById(spotId);
-            if (spot != null) {
-                Vehicle v = new VehicleFactory().createVehicle(vehicleType, plate);
-                v.setHandicappedCardHolder(isHandicappedCardHolder);
-                spot.parkVehicle(v); // sets currentVehicle + OCCUPIED
-            }
+            // 6) Mark spot OCCUPIED
+            Vehicle v = new VehicleFactory().createVehicle(vehicleType, plate);
+            v.setHandicappedCardHolder(isHandicappedCardHolder);
+            chosenSpot.parkVehicle(v);
 
             // 7) Receipt
             Ticket ticket = Ticket.findActiveByPlate(plate);
@@ -122,23 +126,27 @@ public class ParkingSystemFacade {
                 String receipt = ticket.generateFormattedTicket();
 
                 if (misuseFine > 0) {
-                    receipt += "\n❌ RESERVED SPOT MISUSE FINE (Scheme: " + activeScheme + "): RM "
+                    receipt += "\n❌ RESERVED SPOT MISUSE FINE (Scheme: "
+                            + activeScheme + "): RM "
                             + String.format("%.2f", misuseFine);
                 }
 
                 if (existingDebt > 0) {
-                    receipt += "\n⚠️ UNPAID FINES DETECTED: RM " + String.format("%.2f", existingDebt);
+                    receipt += "\n⚠️ UNPAID FINES DETECTED: RM "
+                            + String.format("%.2f", existingDebt);
                 }
 
                 return receipt;
             }
 
         } catch (Exception e) {
+            e.printStackTrace();
             return "Error during vehicle entry: " + e.getMessage();
         }
 
         return "Error: Failed to generate ticket.";
     }
+
 
 
 public double checkExistingDebt(String plate) {
@@ -254,32 +262,41 @@ public double checkExistingDebt(String plate) {
 
         ParkingRepository repo = new ParkingRepository();
 
-        // Build vehicle using REAL plate (no TEMP)
         Vehicle v = vehicleFactory.createVehicle(vehicleType, plate);
         v.setHandicappedCardHolder(cardHolder);
 
-        // 1) If plate has a valid reservation -> ONLY return reserved spot(s)
+        // 1) If plate has a valid reservation: try return ONLY reserved spot
         List<String> reserved = repo.getReservedSelectableSpotIds(plate);
         if (reserved != null && !reserved.isEmpty()) {
 
-            // Filter: only show if the reserved spot is currently AVAILABLE & can park vehicle
             List<String> filtered = new ArrayList<>();
             for (String id : reserved) {
                 ParkingSpot ps = ParkingLot.getInstance().findSpotById(id);
+
+                // keep strict rules here
                 if (ps != null && ps.isAvailable() && ps.canParkVehicle(v)) {
                     filtered.add(id);
                 }
             }
-            return filtered;
+
+            // If reservation exists BUT spot cannot be used (expired in memory / occupied / mismatch),
+            // fall back to normal spots instead of returning empty.
+            if (!filtered.isEmpty()) {
+                return filtered;
+            }
+            // else continue to normal list below
         }
 
-        // 2) Otherwise -> normal list (includes Reserved + others, filtered by availability)
+        // 2) Otherwise - normal list
         List<String> ids = new ArrayList<>();
         for (ParkingSpot s : ParkingLot.getInstance().getAvailableSpots(v, plate)) {
-            ids.add(s.getSpotId());
+            if (s.isAvailable() && s.canParkVehicle(v)) {
+                ids.add(s.getSpotId());
+            }
         }
         return ids;
     }
+
 
     
     //for reservation spot
