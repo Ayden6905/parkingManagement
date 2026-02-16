@@ -27,7 +27,7 @@ public class Ticket {
    
     
     public Ticket(String ticketId, Vehicle licensePlate, ParkingSpot spotId, 
-            LocalDateTime entryTime, String  fineScheme, double carriedOverFine) {
+              LocalDateTime entryTime, String fineScheme, double carriedOverFine) {
         this.ticketId = ticketId;
         this.licensePlate = licensePlate;
         this.spotId = spotId;
@@ -152,41 +152,41 @@ public class Ticket {
     // --- UPDATED FIND ACTIVE TICKET ---
    public static Ticket findActiveByPlate(String plate) {
     // 1. Added vehicleType to the SELECT so we can tell the Factory what to create
-    String sql = "SELECT t.ticketId, t.licensePlate, t.spotId, t.entryTime, t.fineScheme, t.carriedOverFine, v.vehicleType "
-               + "FROM ticket t "
-               + "JOIN vehicle v ON t.licensePlate = v.licensePlate "
-               + "WHERE t.licensePlate=? AND t.exitTime IS NULL";
+        String sql = "SELECT t.ticketId, t.licensePlate, t.spotId, t.entryTime, t.fineScheme, t.carriedOverFine, v.vehicleType "
+                   + "FROM ticket t "
+                   + "JOIN vehicle v ON t.licensePlate = v.licensePlate "
+                   + "WHERE t.licensePlate=? AND t.exitTime IS NULL";
 
-    try (Connection conn = DatabaseConfig.getConnection(); 
-         PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (Connection conn = DatabaseConfig.getConnection(); 
+             PreparedStatement ps = conn.prepareStatement(sql)) {
 
-        ps.setString(1, plate);
+            ps.setString(1, plate);
 
-        try (ResultSet rs = ps.executeQuery()) {
-            if (rs.next()) {
-                // 2. Fetch the type from the DB result
-                String typeStr = rs.getString("vehicleType");
-                double debt = rs.getDouble("carriedOverFine");
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    String type = rs.getString("vehicleType"); // Fixed variable name
+                    double debt = rs.getDouble("carriedOverFine");
 
-                // 3. Create the vehicle with the correct type and fine
-                Vehicle v = SimpleVehicleFactory.createVehicle(plate, typeStr, debt);
-                
-                // You may need to adjust this depending on how you store Spot details
-                ParkingSpot s = new RegularSpot(rs.getString("spotId"), 1); 
+                    // Use the active VehicleFactory
+                    VehicleFactory factory = new VehicleFactory();
+                    Vehicle v = factory.createVehicle(type, plate, debt);
+                    
+                    // Note: You may want to fetch the actual spot type from DB instead of defaulting to RegularSpot
+                    ParkingSpot s = new RegularSpot(rs.getString("spotId"), 1); 
 
-                return new Ticket(
-                        rs.getString("ticketId"),
-                        v,
-                        s,
-                        rs.getTimestamp("entryTime").toLocalDateTime(),
-                        rs.getString("fineScheme"),
-                        debt
-                ); 
+                    return new Ticket(
+                            rs.getString("ticketId"),
+                            v,
+                            s,
+                            rs.getTimestamp("entryTime").toLocalDateTime(),
+                            rs.getString("fineScheme"),
+                            debt
+                    ); 
+                }
             }
+        } catch (SQLException e) {
+            System.out.println("Error finding active ticket: " + e.getMessage());
         }
-    } catch (SQLException e) {
-        System.out.println("Error finding active ticket: " + e.getMessage());
-    }
     return null;
 }
     

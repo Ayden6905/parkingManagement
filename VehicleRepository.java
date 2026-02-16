@@ -51,7 +51,8 @@ public class VehicleRepository {
                     
                     // FIX: Pass 'fines' as the third argument to match your new Factory signature
                     // This ensures the object is created with the debt already inside it
-                    return SimpleVehicleFactory.createVehicle(licensePlate, typeStr, fines);
+                    VehicleFactory factory = new VehicleFactory();
+                    return factory.createVehicle(typeStr, licensePlate, fines);
                 }
             }
         }

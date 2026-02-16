@@ -20,10 +20,12 @@ public class ParkingSystemFacade {
     private final FineManager fineManager;
     private final TicketService ticketService;
     private VehicleFactory vehicleFactory = new VehicleFactory();
-
+    private ParkingRepository repository;
+    
     public ParkingSystemFacade() {
         this.fineManager = new FineManager();
         this.ticketService = new TicketService();
+        this.repository = new ParkingRepository();
 
         String savedScheme = getCurrentFineScheme();
         this.fineManager.setStrategy(savedScheme);
@@ -219,7 +221,7 @@ public double checkExistingDebt(String plate) {
     }
 
     //parking summary
-    public ParkingSummary getParkingSummary(String plate, double baseHourlyRate) {
+    public ParkingSummary getParkingSummary(String plate) {
     Ticket ticket = Ticket.findActiveByPlate(plate);
     if (ticket == null) return null;
 
@@ -234,8 +236,9 @@ public double checkExistingDebt(String plate) {
     double carriedOverFine = ticket.getCarriedOverFine(); 
     
     // 4. Calculate total fee
-    double parkingFee = duration * baseHourlyRate;
-    double totalDue = parkingFee + currentFine + carriedOverFine;
+     double parkingFee = calculateParkingFee(ticket.getLicensePlate(), ticket.getSpotId(), duration);
+     double historicalDebt = ticket.getCarriedOverFine();
+    
 
     return new ParkingSummary(
             ticket.getTicketId(),
@@ -244,8 +247,8 @@ public double checkExistingDebt(String plate) {
             LocalDateTime.now(),
             duration,
             parkingFee,
-            currentFine + carriedOverFine, // Total Fines (Current + Past)
-            totalDue
+            currentFine + historicalDebt,
+             parkingFee + currentFine + historicalDebt
     );
 }
 
@@ -289,23 +292,29 @@ public double checkExistingDebt(String plate) {
     }
 
     //payment processing
-    public Receipt processPayment(String plate,
-                                  double hourlyRate,
-                                  double fineToPay,
-                                  String method) {
+       public Receipt processPayment(String plate, double finePaid, String method) {
+    Ticket ticket = Ticket.findActiveByPlate(plate);
+    if (ticket == null) return null;
 
-        return ticketService.closeTicketAndPay(
-                plate,
-                hourlyRate,
-                fineToPay,
-                method
-        );
-    }
+    int duration = ticket.calculateDurationHours();
+    double parkingFee = calculateParkingFee(ticket.getLicensePlate(), ticket.getSpotId(), duration);
+    double totalPaid = parkingFee + finePaid;
 
-    //revenue report
-    public List<RevenueRecord> getRevenueReport() {
-        return ticketService.getRevenueReport();
-    }
+    // Finalize ticket in DB
+    LocalDateTime now = LocalDateTime.now();
+    ticket.closeTicket(now, parkingFee, ticket.getFineAmount(), totalPaid, method);
+
+    // FIX: Provide all 7 arguments required by the Receipt constructor
+    return new Receipt(
+        1,              // Receipt ID (You can use a sequence or DB ID)
+        ticket,         // The Ticket object
+        parkingFee,     // The calculated parking fee
+        finePaid,       // The amount of fine paid now
+        totalPaid,      // The total amount paid
+        method,         // Payment method (Cash/Card)
+        now             // The current timestamp
+    );
+}
     
  
     
@@ -585,21 +594,34 @@ public List<Object[]> getPastDebtReport() {
 
 
     //newly added
-    public double calculateParkingFee(Vehicle v, ParkingSpot spot, int hours) {
-
-        // for handicapped driver
-        if (v.isHandicappedCardHolder()) {
-            
-            if (spot.getSpotType() == SpotType.HANDICAPPED) {
-                return 0.0;
-            }
-            
-            if (spot.getSpotType() == SpotType.REGULAR) {
-                return 2.0;                
-            }
-        }
-        return hours * spot.getHourlyRate();
+        public double calculateParkingFee(Vehicle vehicle, ParkingSpot spot, int hours) {
+    // 1. Reserved/VIP Spots are RM 10/hour
+    if (spot instanceof ReservedSpot) {
+        return hours * 10.0;
     }
+     // 2. Handicapped Logic: RM 2/hour (FREE if in a Handicapped spot)
+    if (vehicle instanceof HandicappedVehicle) {
+        // Requirement: FREE only if handicapped card holder parks in handicapped spot
+        if (spot instanceof HandicappedSpot) {
+            return 0.0;
+        }
+        // Requirement: Otherwise, it is RM 2/hour
+        return hours * 2.0;
+    }
+
+    // 3. Compact Vehicles (Motorcycles) are RM 2/hour
+    if (vehicle instanceof Motorcycle) {
+        return hours * 2.0;
+    }
+
+    // 4. FIX: Standard Cars and SUVs are both RM 5/hour
+    if (vehicle instanceof Car || vehicle instanceof SUV) {
+        return hours * 5.0;
+    }
+
+    // Default fallback
+    return hours * 5.0;
+}
     
     
     public Ticket parkVehicle(Vehicle v, ParkingSpot spot, String scheme) {
@@ -623,5 +645,14 @@ public List<Object[]> getPastDebtReport() {
     return Ticket.findActiveByPlate(plate);
 }
     
+    public List<Ticket> getRevenueReport() {
+    // This assumes your facade has access to a repository or service
+    // that can query the database for tickets with exit times.
+    return repository.getCompletedTickets(); 
+}
+    public List<Ticket> getCompletedTickets() {
+    // This tells the facade to go get the tickets from the database via the repository
+    return repository.getCompletedTickets(); 
+}
 
 }

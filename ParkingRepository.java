@@ -420,5 +420,57 @@ public List<Object[]> getOccupancyDetailsByFloor(int floor) {
         }
         return false;
     }
+    
+    public List<Ticket> getCompletedTickets() {
+    List<Ticket> list = new ArrayList<>();
+    // We join with vehicle to get the type so we can recreate the Vehicle object correctly
+    String sql = "SELECT t.*, v.vehicleType FROM ticket t " +
+                 "JOIN vehicle v ON t.licensePlate = v.licensePlate " +
+                 "WHERE t.exitTime IS NOT NULL";
+
+    try (Connection conn = DatabaseConfig.getConnection();
+         PreparedStatement ps = conn.prepareStatement(sql);
+         ResultSet rs = ps.executeQuery()) {
+
+        VehicleFactory factory = new VehicleFactory();
+
+        while (rs.next()) {
+            // 1. Recreate the Vehicle object
+            String plate = rs.getString("licensePlate");
+            String type = rs.getString("vehicleType");
+            double debt = rs.getDouble("carriedOverFine");
+            Vehicle v = factory.createVehicle(type, plate, debt);
+
+            // 2. Recreate a Spot object (Defaulting to Regular for report purposes)
+            ParkingSpot s = new RegularSpot(rs.getString("spotId"), 1);
+
+            // 3. Call your 6-parameter constructor
+            Ticket t = new Ticket(
+                rs.getString("ticketId"),
+                v,
+                s,
+                rs.getTimestamp("entryTime").toLocalDateTime(),
+                rs.getString("fineScheme"),
+                debt
+            );
+
+            // 4. Update the 'closed' fields using your closeTicket-style logic
+            // Since we can't call closeTicket (it writes to DB), we use a helper or setters
+            t.closeTicket(
+                rs.getTimestamp("exitTime").toLocalDateTime(),
+                rs.getDouble("parkingFee"),
+                rs.getDouble("fineAmount"),
+                rs.getDouble("totalPaid"),
+                rs.getString("paymentMethod")
+            );
+
+            list.add(t);
+        }
+    } catch (SQLException e) {
+        e.printStackTrace();
+    }
+    return list;
 }
+} // Make sure this last brace is here to close the class!
+
 
