@@ -303,10 +303,16 @@ private JPanel createFineOverviewPanel() {
     });
 
     btnRefresh.addActionListener(e -> {
-        // Method to call facade and update both activeModel and debtModel
-        refreshBothTables(activeModel, debtModel);
-    });
-
+    // Force the refresh
+    refreshBothTables(activeModel, debtModel);
+    
+    // Debug check: This will print in your NetBeans/IDE console
+    System.out.println("DEBUG: Refreshed Active Table. Rows: " + activeModel.getRowCount());
+    
+    if (activeModel.getRowCount() == 0 && debtModel.getRowCount() == 0) {
+        JOptionPane.showMessageDialog(this, "Refresh complete, but no fine data found in database.");
+    }
+});
     return mainContainer;
 }
 
@@ -354,50 +360,47 @@ public void updateOccupancyDisplay() {
 
 
      private void showRevenueReport() {
-    // Change: Use List<Ticket> instead of List<RevenueRecord>
-    List<Ticket> records = facade.getCompletedTickets(); 
+        List<Ticket> records = facade.getRevenueReport();
 
-    if (records == null || records.isEmpty()) {
-        JOptionPane.showMessageDialog(this, "No revenue records found.");
-        return;
-    }
+        if (records.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "No revenue records found.");
+            return;
+        }
 
-    String[] columns = {
-        "License Plate", "Entry Time", "Exit Time", 
-        "Total Paid (RM)", "Payment Method"
-    };
+        String[] columns = {
+                "License Plate",
+                "Entry Time",
+                "Exit Time",
+                "Total Paid (RM)",
+                "Payment Method",
+                "Receipt Time"
+        };
 
-    Object[][] data = new Object[records.size()][5];
+        Object[][] data = new Object[records.size()][5];
     double totalRevenue = 0;
 
     for (int i = 0; i < records.size(); i++) {
-    Ticket t = records.get(i);
+        Ticket t = records.get(i);
 
-    // data[i][0] is the License Plate String
-    data[i][0] = t.getLicensePlate().getLicensePlate(); 
-    
-    // data[i][1] is Entry Time
-    data[i][1] = t.getEntryTime().toString();
-    
-    // data[i][2] is Exit Time
-    data[i][2] = (t.getExitTime() != null) ? t.getExitTime().toString() : "N/A";
-    
-    // data[i][3] is Total Paid
-    data[i][3] = String.format("%.2f", t.getTotalPaid());
-    
-    // data[i][4] is Payment Method
-    data[i][4] = t.getPaymentMethod();
+            // Map the Ticket data to the table rows
+        data[i][0] = t.getLicensePlate(); 
+        data[i][1] = t.getEntryTime();
+        data[i][2] = t.getExitTime();
+        data[i][3] = String.format("%.2f", t.getTotalPaid());
+        data[i][4] = t.getPaymentMethod();
 
-    totalRevenue += t.getTotalPaid();
-}
+        totalRevenue += t.getTotalPaid();
+    }
 
     JTable table = new JTable(data, columns);
     JScrollPane scrollPane = new JScrollPane(table);
+
     JPanel panel = new JPanel(new BorderLayout());
     panel.add(scrollPane, BorderLayout.CENTER);
 
     JLabel totalLabel = new JLabel(String.format("Total Revenue: RM %.2f", totalRevenue));
     totalLabel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+    totalLabel.setFont(new Font("SansSerif", Font.BOLD, 14));
     panel.add(totalLabel, BorderLayout.SOUTH);
 
     JOptionPane.showMessageDialog(this, panel, "Revenue Report", JOptionPane.PLAIN_MESSAGE);

@@ -79,6 +79,10 @@ public class ParkingSystemFacade {
             // 2) Scheme locked at entry (this gets stored into ticket)
             String activeScheme = getCurrentFineScheme();
 
+            
+            
+            
+            
             // 3) Validate spot exists
             ParkingSpot chosenSpot = ParkingLot.getInstance().findSpotById(spotId);
             if (chosenSpot == null) {
@@ -121,19 +125,14 @@ public class ParkingSystemFacade {
             // 7) Receipt
             Ticket ticket = Ticket.findActiveByPlate(plate);
             if (ticket != null) {
-                String receipt = ticket.generateFormattedTicket();
-
-                if (misuseFine > 0) {
-                    receipt += "\n❌ RESERVED SPOT MISUSE FINE (Scheme: " + activeScheme + "): RM "
-                            + String.format("%.2f", misuseFine);
-                }
-
-                if (existingDebt > 0) {
-                    receipt += "\n⚠️ UNPAID FINES DETECTED: RM " + String.format("%.2f", existingDebt);
-                }
-
-                return receipt;
+            String receipt = ticket.generateFormattedTicket();
+            
+            // 4. Visual confirmation for the UI
+            if (existingDebt > 0) {
+                receipt += "\n⚠️ UNPAID FINES DETECTED: RM " + String.format("%.2f", existingDebt);
             }
+            return receipt;
+        }
 
         } catch (Exception e) {
             return "Error during vehicle entry: " + e.getMessage();
@@ -544,26 +543,50 @@ public List<Object[]> getAllOutstandingFines() {
 
 public List<Object[]> getActiveFinesReport() {
     List<Object[]> report = new ArrayList<>();
-    // Using LEFT JOIN ensures the ticket shows even if vehicle details are missing
+    
+    // Updated SQL: Only select records where they have overstayed (> 24 hours) OR have existing debt
     String sql = "SELECT t.licensePlate, v.vehicleType, t.spotId, t.entryTime, t.fineScheme, t.carriedOverFine " +
                  "FROM ticket t " +
-                 "LEFT JOIN vehicle v ON t.licensePlate = v.licensePlate " + // Changed to LEFT JOIN
-                 "WHERE t.exitTime IS NULL AND t.carriedOverFine > 0";
+                 "LEFT JOIN vehicle v ON t.licensePlate = v.licensePlate " +
+                 "WHERE t.exitTime IS NULL " +
+                 "AND (TIMESTAMPDIFF(HOUR, t.entryTime, NOW()) >= 24 OR t.carriedOverFine > 0)"; 
 
     try (Connection conn = DatabaseConfig.getConnection();
          PreparedStatement ps = conn.prepareStatement(sql);
          ResultSet rs = ps.executeQuery()) {
+        
         while (rs.next()) {
+            java.sql.Timestamp entryTimestamp = rs.getTimestamp("entryTime");
+            String timeDisplay = (entryTimestamp != null) ? entryTimestamp.toString() : "N/A";
+            
+            double liveFine = 0.0;
+            if (entryTimestamp != null) {
+                LocalDateTime entryTime = entryTimestamp.toLocalDateTime();
+                long hoursParked = java.time.Duration.between(entryTime, LocalDateTime.now()).toHours();
+                
+                String scheme = rs.getString("fineScheme");
+                fineManager.setStrategy(scheme != null ? scheme : "Fixed");
+                
+                // Fine only applies to hours exceeding the 24-hour limit
+                if (hoursParked >= 24) {
+                    liveFine = fineManager.calculateFine((int) hoursParked);
+                }
+            }
+
+            double totalFineToShow = liveFine + rs.getDouble("carriedOverFine");
+
             report.add(new Object[]{
                 rs.getString("licensePlate"),
-                rs.getString("vehicleType"),
+                rs.getString("vehicleType") == null ? "Car" : rs.getString("vehicleType"),
                 rs.getString("spotId"),
-                rs.getTimestamp("entryTime").toString(),
-                rs.getString("fineScheme"), // <--- New data point
-                rs.getDouble("carriedOverFine")
+                timeDisplay,
+                rs.getString("fineScheme") == null ? "Fixed" : rs.getString("fineScheme"),
+                totalFineToShow
             });
         }
-    } catch (SQLException e) { e.printStackTrace(); }
+    } catch (SQLException e) { 
+        System.err.println("Database Error in getActiveFinesReport: " + e.getMessage());
+    }
     return report;
 }
 
