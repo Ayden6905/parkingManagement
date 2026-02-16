@@ -199,18 +199,18 @@ public Receipt exitVehicle(String licensePlate) {
     return allSpotsMap;
 }
     
-    public double calculateOccupancy()
-    {
-        int total = 0;
-        int occupied = 0;
-        
-        for (Floor f : floors)
-        {
-            total += f.getAllSpots().size();
-            occupied += f.getOccupiedSpots().size();
-        }
-        return total == 0 ? 0.0 : (occupied * 1.0/total);
+    public double calculateOccupancy() {
+    int total = 0;
+    int occupied = 0;
+    
+    for (Floor f : floors) {
+        total += f.getAllSpots().size();
+        // Uses your existing Floor method to count occupied spots
+        occupied += f.getOccupiedSpots().size(); 
     }
+    // Returns a decimal (e.g., 0.15 for 15% occupancy)
+    return total == 0 ? 0.0 : ((double) occupied / total);
+}
     
     public void setFineStrategy(FineStrategy strategy)
     {
