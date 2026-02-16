@@ -176,26 +176,33 @@ public double checkExistingDebt(String plate) {
     }
 
     //parking summary
-    public ParkingSummary getParkingSummary(String plate, double hourlyRate) {
+    public ParkingSummary getParkingSummary(String plate, double baseHourlyRate) {
     Ticket ticket = Ticket.findActiveByPlate(plate);
     if (ticket == null) return null;
 
-    // Apply the historical scheme for the preview
-    fineManager.setStrategy(ticket.getFineScheme());
-
+    // 1. Calculate duration
     int duration = ticket.calculateDurationHours();
-    double fineOwed = fineManager.calculateFine(duration);
-    double parkingFee = duration * hourlyRate;
+    
+    // 2. Use the "historical" scheme applied when the car entered
+    fineManager.setStrategy(ticket.getFineScheme());
+    double currentFine = fineManager.calculateFine(duration);
+    
+    // 3. IMPORTANT: Fetch the debt that was carried over into this ticket
+    double carriedOverFine = ticket.getCarriedOverFine(); 
+    
+    // 4. Calculate total fee
+    double parkingFee = duration * baseHourlyRate;
+    double totalDue = parkingFee + currentFine + carriedOverFine;
 
     return new ParkingSummary(
             ticket.getTicketId(),
-            ticket.getLicensePlate().getLicensePlate(),
+            plate,
             ticket.getEntryTime(),
             LocalDateTime.now(),
             duration,
             parkingFee,
-            fineOwed,
-            parkingFee + fineOwed
+            currentFine + carriedOverFine, // Total Fines (Current + Past)
+            totalDue
     );
 }
 
