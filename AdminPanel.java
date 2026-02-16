@@ -236,84 +236,73 @@ private void showFineStrategyReport() {
 
     // --- TAB 4: FINE OVERVIEW & CONFIG ---
 private JPanel createFineOverviewPanel() {
-    JPanel panel = new JPanel();
-    panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-    panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+    JPanel mainContainer = new JPanel(new BorderLayout(10, 10));
+    mainContainer.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
-    // 1. Strategy Config Section
-    JPanel configSection = new JPanel(new FlowLayout(FlowLayout.LEFT));
-    configSection.setMaximumSize(new Dimension(800, 100)); 
-    configSection.setBorder(BorderFactory.createTitledBorder("Fine Rule Setup"));
+    // --- 1. TOP SECTION: Strategy Config & Rules ---
+    JPanel topSection = new JPanel();
+    topSection.setLayout(new BoxLayout(topSection, BoxLayout.Y_AXIS));
+
+    // Scheme Selection Row
+    JPanel configRow = new JPanel(new FlowLayout(FlowLayout.LEFT));
+    configRow.setBorder(BorderFactory.createTitledBorder("Fine Rule Setup"));
     
     String[] schemes = {"Fixed", "Progressive", "Hourly"};
     JComboBox<String> schemeCombo = new JComboBox<>(schemes);
     schemeCombo.setSelectedItem(facade.getCurrentFineScheme());
     JButton btnUpdate = new JButton("Apply Scheme");
-    JButton btnRefreshTable = new JButton("Refresh Fine List");
+    JButton btnRefresh = new JButton("Refresh All Tables");
 
-    configSection.add(new JLabel("Active Strategy: "));
-    configSection.add(schemeCombo);
-    configSection.add(btnUpdate);
-    configSection.add(btnRefreshTable);
+    configRow.add(new JLabel("Active Strategy: "));
+    configRow.add(schemeCombo);
+    configRow.add(btnUpdate);
+    configRow.add(btnRefresh);
 
-    // 2. Explanation Area
-    JPanel textSection = new JPanel(new BorderLayout());
-    textSection.setMaximumSize(new Dimension(800, 150));
-    textSection.setBorder(BorderFactory.createTitledBorder("Rule Descriptions"));
-    JTextArea txtRules = new JTextArea(4, 30);
-    txtRules.setText("• Fixed: RM 50 flat rate.\n" +
-                     "• Progressive: Increases hourly (RM 10 -> 20 -> 40).\n" +
-                     "• Hourly: Calculated based on overstay hours.");
+    // Rule Descriptions
+    JTextArea txtRules = new JTextArea("• Fixed: RM 50 flat.\n• Progressive: Increases hourly (10->20->40).\n• Hourly: Based on overstay.");
     txtRules.setEditable(false);
     txtRules.setBackground(new Color(245, 245, 245));
-    textSection.add(new JScrollPane(txtRules), BorderLayout.CENTER);
-
-    // 3. UPDATED: Active Fines Table Section
-    JPanel fineTableSection = new JPanel(new BorderLayout());
-    fineTableSection.setBorder(BorderFactory.createTitledBorder("Vehicle Debt Monitoring (Active & Past)"));
     
-    // Updated Columns to show the split between current and past debt
-    String[] columns = {"Plate Number", "Entry Time", "Current Fine (RM)", "Past Debt (RM)", "Total Owed (RM)", "Status"};
-    
-    DefaultTableModel tableModel = new DefaultTableModel(columns, 0);
-    JTable fineTable = new JTable(tableModel);
-    
-    // Initial data load
-    List<Object[]> initialData = facade.getVehiclesWithFines();
-    for (Object[] row : initialData) {
-        tableModel.addRow(row);
-    }
+    topSection.add(configRow);
+    topSection.add(new JScrollPane(txtRules));
+    mainContainer.add(topSection, BorderLayout.NORTH);
 
-    JScrollPane tableScroll = new JScrollPane(fineTable);
-    tableScroll.setPreferredSize(new Dimension(750, 300));
-    fineTableSection.add(tableScroll, BorderLayout.CENTER);
+    // --- 2. CENTER SECTION: The Two Tables ---
+    JPanel tablesPanel = new JPanel(new GridLayout(2, 1, 10, 10));
 
-    // Add everything to main panel
-    panel.add(configSection);
-    panel.add(Box.createRigidArea(new Dimension(0, 10)));
-    panel.add(textSection);
-    panel.add(Box.createRigidArea(new Dimension(0, 10)));
-    panel.add(fineTableSection);
+    // Table 1: Active Fines
+    JPanel activePanel = new JPanel(new BorderLayout());
+    activePanel.setBorder(BorderFactory.createTitledBorder("Active Fines (Currently Parked)"));
+    String[] activeCols = {"Plate", "Type", "Spot", "Entry Time","Scheme", "Current Fine (RM)"};
+    DefaultTableModel activeModel = new DefaultTableModel(activeCols, 0);
+    activePanel.add(new JScrollPane(new JTable(activeModel)), BorderLayout.CENTER);
 
-    // --- Action Listeners ---
+    // Table 2: Past Debt
+    JPanel debtPanel = new JPanel(new BorderLayout());
+    debtPanel.setBorder(BorderFactory.createTitledBorder("Unpaid Past Debt (Vehicle History)"));
+    String[] debtCols = {"Plate", "Vehicle Type","Last Scheme", "Total Unpaid Debt (RM)"};
+    DefaultTableModel debtModel = new DefaultTableModel(debtCols, 0);
+    debtPanel.add(new JScrollPane(new JTable(debtModel)), BorderLayout.CENTER);
 
+    tablesPanel.add(activePanel);
+    tablesPanel.add(debtPanel);
+    mainContainer.add(tablesPanel, BorderLayout.CENTER);
+
+    // --- 3. Action Listeners ---
     btnUpdate.addActionListener(e -> {
         String selected = (String) schemeCombo.getSelectedItem();
         if(facade.changeSystemFineSchemeDb(selected)) {
             JOptionPane.showMessageDialog(this, "Rules updated to " + selected);
+            // Refresh data here if needed
         }        
     });
 
-    btnRefreshTable.addActionListener(e -> {
-        List<Object[]> newData = facade.getVehiclesWithFines();
-        tableModel.setRowCount(0); 
-        for (Object[] row : newData) {
-            tableModel.addRow(row);
-        }
-        JOptionPane.showMessageDialog(this, "Fine list refreshed from database.");
+    btnRefresh.addActionListener(e -> {
+        // Method to call facade and update both activeModel and debtModel
+        refreshBothTables(activeModel, debtModel);
     });
 
-    return panel;
+    return mainContainer;
 }
 
 
@@ -383,5 +372,22 @@ public void updateOccupancyDisplay() {
         JOptionPane.showMessageDialog(this, panel,
                 "Revenue Report", JOptionPane.PLAIN_MESSAGE);
     }
+     
+    // Inside AdminPanel.java
+private void refreshBothTables(DefaultTableModel activeModel, DefaultTableModel debtModel) {
+    activeModel.setRowCount(0);
+    debtModel.setRowCount(0);
+
+    // Fills Active Fines (6 columns: Plate, Type, Spot, Time, Scheme, Fine)
+    for (Object[] row : facade.getActiveFinesReport()) {
+        activeModel.addRow(row);
+    }
+
+    // Fills Past Debt (4 columns: Plate, Type, Last Scheme, Total Debt)
+    for (Object[] row : facade.getPastDebtReport()) {
+        debtModel.addRow(row);
+    }
+}
+     
      
    }

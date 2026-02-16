@@ -287,45 +287,40 @@ public double checkExistingDebt(String plate) {
     }
     
     public List<Object[]> getVehiclesWithFines() {
-    List<Object[]> list = new ArrayList<>();
+    List<Object[]> data = new ArrayList<>();
     
-    // We JOIN ticket (current stay) and vehicle (permanent record of debt)
-    String sql = "SELECT t.licensePlate, t.entryTime, t.fineScheme, v.outstandingFines " +
-                 "FROM ticket t " +
-                 "JOIN vehicle v ON t.licensePlate = v.licensePlate " +
-                 "WHERE t.exitTime IS NULL";
+    // We JOIN vehicle and ticket to see both active status and historical debt
+    String sql = "SELECT v.licensePlate, t.entryTime, t.carriedOverFine AS currentTicketFine, " +
+                 "v.outstandingFines AS historicalDebt, v.vehicleType " +
+                 "FROM vehicle v " +
+                 "LEFT JOIN ticket t ON v.licensePlate = t.licensePlate AND t.exitTime IS NULL " +
+                 "WHERE v.outstandingFines > 0 OR t.carriedOverFine > 0";
 
     try (Connection conn = DatabaseConfig.getConnection();
          PreparedStatement ps = conn.prepareStatement(sql);
          ResultSet rs = ps.executeQuery()) {
 
         while (rs.next()) {
-            String plate = rs.getString("licensePlate");
-            String scheme = rs.getString("fineScheme");
-            double pastDebt = rs.getDouble("outstandingFines"); // <--- This pulls the "Not Paid" debt
+            double currentFine = rs.getDouble("currentTicketFine");
+            double pastDebt = rs.getDouble("historicalDebt");
+            double total = currentFine + pastDebt;
+            String status = (rs.getTimestamp("entryTime") != null) ? "PARKED" : "AWAY";
+            String entryTime = (rs.getTimestamp("entryTime") != null) ? 
+                               rs.getTimestamp("entryTime").toString() : "N/A";
 
-            // Calculate current stay fine
-            Ticket t = Ticket.findActiveByPlate(plate);
-            int hours = t.calculateDurationHours();
-            fineManager.setStrategy(scheme);
-            double currentFine = fineManager.calculateFine(hours);
-
-            // Add to table if they owe ANYTHING
-            if (currentFine > 0 || pastDebt > 0) {
-                list.add(new Object[]{
-                    plate,
-                    rs.getTimestamp("entryTime").toString(),
-                    currentFine,   // Current Fine (RM)
-                    pastDebt,      // Past Debt (RM)
-                    (currentFine + pastDebt), // Total Owed (RM)
-                    "Unpaid/Overstayed"
-                });
-            }
+            data.add(new Object[]{
+                rs.getString("licensePlate"),
+                entryTime,
+                currentFine,
+                pastDebt,
+                total,
+                status
+            });
         }
     } catch (SQLException e) {
-        System.out.println("Error in getVehiclesWithFines: " + e.getMessage());
+        e.printStackTrace();
     }
-    return list;
+    return data;
 }
     
     // --- FINE ANALYTICS REPORT ---
@@ -465,6 +460,56 @@ public List<Object[]> getAllOutstandingFines() {
         }
     } catch (SQLException e) { e.printStackTrace(); }
     return data;
+}
+
+public List<Object[]> getActiveFinesReport() {
+    List<Object[]> report = new ArrayList<>();
+    // Added t.fineScheme to the SELECT statement
+    String sql = "SELECT t.licensePlate, v.vehicleType, t.spotId, t.entryTime, t.fineScheme, t.carriedOverFine " +
+                 "FROM ticket t " +
+                 "JOIN vehicle v ON t.licensePlate = v.licensePlate " +
+                 "WHERE t.exitTime IS NULL AND t.carriedOverFine > 0";
+
+    try (Connection conn = DatabaseConfig.getConnection();
+         PreparedStatement ps = conn.prepareStatement(sql);
+         ResultSet rs = ps.executeQuery()) {
+        while (rs.next()) {
+            report.add(new Object[]{
+                rs.getString("licensePlate"),
+                rs.getString("vehicleType"),
+                rs.getString("spotId"),
+                rs.getTimestamp("entryTime").toString(),
+                rs.getString("fineScheme"), // <--- New data point
+                rs.getDouble("carriedOverFine")
+            });
+        }
+    } catch (SQLException e) { e.printStackTrace(); }
+    return report;
+}
+
+
+public List<Object[]> getPastDebtReport() {
+    List<Object[]> report = new ArrayList<>();
+    // This query gets the vehicle info and joins with the latest ticket to find the scheme
+    String sql = "SELECT v.licensePlate, v.vehicleType, v.outstandingFines, " +
+                 "(SELECT t.fineScheme FROM ticket t WHERE t.licensePlate = v.licensePlate ORDER BY t.entryTime DESC LIMIT 1) as lastScheme " +
+                 "FROM vehicle v WHERE v.outstandingFines > 0";
+
+    try (Connection conn = DatabaseConfig.getConnection();
+         PreparedStatement ps = conn.prepareStatement(sql);
+         ResultSet rs = ps.executeQuery()) {
+        while (rs.next()) {
+            report.add(new Object[]{
+                rs.getString("licensePlate"),
+                rs.getString("vehicleType"),
+                rs.getString("lastScheme") != null ? rs.getString("lastScheme") : "N/A",
+                rs.getDouble("outstandingFines")
+            });
+        }
+    } catch (SQLException e) { 
+        e.printStackTrace(); 
+    }
+    return report;
 }
 
 
