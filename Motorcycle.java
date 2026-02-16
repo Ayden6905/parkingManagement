@@ -8,8 +8,8 @@ package com.mycompany.parkingmanagement;
  * @author ayden
  */
 public class Motorcycle extends Vehicle {
-    public Motorcycle(String licensePlate) {
-        super(licensePlate, VehicleType.MOTORCYCLE);
+    public Motorcycle(String licensePlate, double fines) {
+        super(licensePlate, VehicleType.MOTORCYCLE, fines);
     }
 
     @Override

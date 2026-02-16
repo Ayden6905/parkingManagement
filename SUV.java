@@ -8,8 +8,8 @@ package com.mycompany.parkingmanagement;
  * @author ayden
  */
 public class SUV extends Vehicle {
-    public SUV(String licensePlate) {
-        super(licensePlate, VehicleType.SUV);
+    public SUV(String licensePlate, double fines) {
+        super(licensePlate, VehicleType.SUV, fines);
     }
 
     @Override

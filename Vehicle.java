@@ -18,12 +18,12 @@ public abstract class Vehicle {
     private LocalDateTime exitTime;
     private double outstandingFines;
 
-    protected Vehicle(String licensePlate, VehicleType vehicleType) {
+    protected Vehicle(String licensePlate, VehicleType vehicleType, double outstandingFines) {
         this.licensePlate = licensePlate;
         this.vehicleType = vehicleType;
         this.entryTime = LocalDateTime.now();
         this.exitTime = null;
-        this.outstandingFines = 0.0;
+        this.outstandingFines = outstandingFines;
     }
     
     public String getLicensePlate()
@@ -54,6 +54,11 @@ public abstract class Vehicle {
         this.exitTime = exitTime;
     }
 
+    // This is used by the Facade to update the object before saving to DB
+    public void setOutstandingFines(double amount) {
+        this.outstandingFines = amount;
+    }
+    
     public void addFine(double amount) {
         if (amount > 0) {
             this.outstandingFines += amount;

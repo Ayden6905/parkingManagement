@@ -249,34 +249,32 @@ private JPanel createFineOverviewPanel() {
     JComboBox<String> schemeCombo = new JComboBox<>(schemes);
     schemeCombo.setSelectedItem(facade.getCurrentFineScheme());
     JButton btnUpdate = new JButton("Apply Scheme");
-    
-    // Create Refresh Button
     JButton btnRefreshTable = new JButton("Refresh Fine List");
 
     configSection.add(new JLabel("Active Strategy: "));
     configSection.add(schemeCombo);
     configSection.add(btnUpdate);
-    configSection.add(btnRefreshTable); // Added to the config section
+    configSection.add(btnRefreshTable);
 
     // 2. Explanation Area
     JPanel textSection = new JPanel(new BorderLayout());
     textSection.setMaximumSize(new Dimension(800, 150));
     textSection.setBorder(BorderFactory.createTitledBorder("Rule Descriptions"));
     JTextArea txtRules = new JTextArea(4, 30);
-    txtRules.setText("• Fixed: RM 50 flat rate regardless of time.\n" +
-                     "• Progressive: Increases the longer the vehicle stays.\n" +
-                     "• Hourly: Fine calculated as Rate x Total Hours.");
+    txtRules.setText("• Fixed: RM 50 flat rate.\n" +
+                     "• Progressive: Increases hourly (RM 10 -> 20 -> 40).\n" +
+                     "• Hourly: Calculated based on overstay hours.");
     txtRules.setEditable(false);
     txtRules.setBackground(new Color(245, 245, 245));
     textSection.add(new JScrollPane(txtRules), BorderLayout.CENTER);
 
-    // 3. Active Fines Table Section
+    // 3. UPDATED: Active Fines Table Section
     JPanel fineTableSection = new JPanel(new BorderLayout());
-    fineTableSection.setBorder(BorderFactory.createTitledBorder("Vehicles with Unpaid Fines (Overstayed)"));
+    fineTableSection.setBorder(BorderFactory.createTitledBorder("Vehicle Debt Monitoring (Active & Past)"));
     
-    String[] columns = {"Plate Number", "Entry Time", "Hours", "Fine (RM)", "Status"};
+    // Updated Columns to show the split between current and past debt
+    String[] columns = {"Plate Number", "Entry Time", "Current Fine (RM)", "Past Debt (RM)", "Total Owed (RM)", "Status"};
     
-    // Using DefaultTableModel so we can add/remove rows dynamically
     DefaultTableModel tableModel = new DefaultTableModel(columns, 0);
     JTable fineTable = new JTable(tableModel);
     
@@ -287,7 +285,7 @@ private JPanel createFineOverviewPanel() {
     }
 
     JScrollPane tableScroll = new JScrollPane(fineTable);
-    tableScroll.setPreferredSize(new Dimension(750, 200));
+    tableScroll.setPreferredSize(new Dimension(750, 300));
     fineTableSection.add(tableScroll, BorderLayout.CENTER);
 
     // Add everything to main panel
@@ -299,7 +297,6 @@ private JPanel createFineOverviewPanel() {
 
     // --- Action Listeners ---
 
-    // Apply Strategy
     btnUpdate.addActionListener(e -> {
         String selected = (String) schemeCombo.getSelectedItem();
         if(facade.changeSystemFineSchemeDb(selected)) {
@@ -307,14 +304,13 @@ private JPanel createFineOverviewPanel() {
         }        
     });
 
-    // Refresh Table Logic
     btnRefreshTable.addActionListener(e -> {
         List<Object[]> newData = facade.getVehiclesWithFines();
-        tableModel.setRowCount(0); // Clear old data
+        tableModel.setRowCount(0); 
         for (Object[] row : newData) {
             tableModel.addRow(row);
         }
-        JOptionPane.showMessageDialog(this, "Fine list updated!");
+        JOptionPane.showMessageDialog(this, "Fine list refreshed from database.");
     });
 
     return panel;

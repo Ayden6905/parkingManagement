@@ -17,6 +17,7 @@ public class EntryPanel extends JPanel {
     
     private JTextField plateField;
     private JComboBox<String> typeCombo;
+    private JLabel lblDebtWarning;
 
     public EntryPanel(ParkingSystemFacade facade, MainFrame mainFrame) {
         this.facade = facade;
@@ -41,6 +42,11 @@ public class EntryPanel extends JPanel {
         JButton btnPark = new JButton("Assign Spot & Park");
         JButton btnBack = new JButton("Back to Main Menu");
 
+        lblDebtWarning = new JLabel("");
+        lblDebtWarning.setForeground(Color.RED);
+        lblDebtWarning.setFont(new Font("SansSerif", Font.BOLD, 12));
+        
+        
         // Layout the components
         gbc.gridx = 0; gbc.gridy = 0; gbc.gridwidth = 2; 
         add(title, gbc);
@@ -50,6 +56,11 @@ public class EntryPanel extends JPanel {
 
         gbc.gridy = 2; gbc.gridx = 0; add(lblType, gbc);
         gbc.gridx = 1; add(typeCombo, gbc);
+        
+        gbc.gridy = 5; // Put it above or below the buttons
+        gbc.gridx = 0;
+        gbc.gridwidth = 2;
+        add(lblDebtWarning, gbc);
 
         gbc.gridy = 3; gbc.gridx = 0; gbc.gridwidth = 2; add(btnPark, gbc);
         gbc.gridy = 4; add(btnBack, gbc);
@@ -70,6 +81,25 @@ public class EntryPanel extends JPanel {
                 JOptionPane.showMessageDialog(this, "No available spots.");
                 return;
             }
+            
+            // --- NEW DEBT CHECK LOGIC ---
+    double existingDebt = facade.checkExistingDebt(plate);
+    if (existingDebt > 0) {
+        int choice = JOptionPane.showConfirmDialog(this,
+            "Vehicle has an outstanding fine of RM " + String.format("%.2f", existingDebt) + 
+            ".\nContinue with entry?", 
+            "Outstanding Debt Found", 
+            JOptionPane.YES_NO_OPTION, 
+            JOptionPane.WARNING_MESSAGE);
+        
+        if (choice != JOptionPane.YES_OPTION) {
+            return; // Block entry if operator chooses 'No'
+        }
+        lblDebtWarning.setText("⚠️ UNPAID FINES: RM " + String.format("%.2f", existingDebt));
+    } else {
+        lblDebtWarning.setText(""); // Clear if no debt
+    }
+    // --- END DEBT CHECK ---
 
             String selectedSpot = (String) JOptionPane.showInputDialog(
                     this,

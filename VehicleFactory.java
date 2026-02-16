@@ -9,17 +9,17 @@ package com.mycompany.parkingmanagement;
  */
 public class VehicleFactory {
     
-    public Vehicle createVehicle(String type, String plate) {
-
+    // Add 'fine' as a parameter here
+    public Vehicle createVehicle(String type, String plate, double fine) {
         switch (type) {
             case "Car":
-                return new Car(plate);
+                return new Car(plate, fine); 
             case "Motorcycle":
-                return new Motorcycle(plate);
+                return new Motorcycle(plate, fine);
             case "SUV":
-                return new SUV(plate);
+                return new SUV(plate, fine);
             case "Handicapped":
-                return new HandicappedVehicle(plate);
+                return new HandicappedVehicle(plate, fine);
             default:
                 throw new IllegalArgumentException("Unknown vehicle type: " + type);
         }

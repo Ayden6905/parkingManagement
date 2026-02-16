@@ -23,15 +23,17 @@ public class Ticket {
     private double totalPaid;
     private String paymentMethod;
     private String fineScheme;
+    private double carriedOverFine;
    
     
     public Ticket(String ticketId, Vehicle licensePlate, ParkingSpot spotId, 
-            LocalDateTime entryTime, String  fineScheme) {
+            LocalDateTime entryTime, String  fineScheme, double carriedOverFine) {
         this.ticketId = ticketId;
         this.licensePlate = licensePlate;
         this.spotId = spotId;
         this.entryTime = entryTime;
         this.fineScheme = fineScheme;
+        this.carriedOverFine = carriedOverFine;
         
         //default value used for entry ticket
         this.exitTime = null;
@@ -53,39 +55,51 @@ public class Ticket {
         return totalHours;
     }
     
+    public long calculateDuration() {
+    return (long) calculateDurationHours();
+}
+    
     public void saveEntry() {
-        String sqlVehicle = "INSERT IGNORE INTO vehicle (licensePlate, vehicleType) VALUES (?, ?)";
-        String sqlTicket = "INSERT INTO ticket (ticketId, licensePlate, spotId, entryTime, fineScheme) VALUES (?, ?, ?, ?, ?)";
-        String updateSpot = "UPDATE parkingSpot SET status='Occupied' WHERE spotId=?";
+    String sqlVehicle = "INSERT IGNORE INTO vehicle (licensePlate, vehicleType) VALUES (?, ?)";
+    // 1. ADDED carriedOverFine to the column list and a 6th '?' placeholder
+    String sqlTicket = "INSERT INTO ticket (ticketId, licensePlate, spotId, entryTime, fineScheme, carriedOverFine) VALUES (?, ?, ?, ?, ?, ?)";
+    String updateSpot = "UPDATE parkingSpot SET status='Occupied' WHERE spotId=?";
 
-        try (Connection conn = DatabaseConfig.getConnection()) {
+    try (Connection conn = DatabaseConfig.getConnection()) {
 
-            try (PreparedStatement psVehicle = conn.prepareStatement(sqlVehicle)) {
-                psVehicle.setString(1, licensePlate.getLicensePlate());
-                psVehicle.setString(2, licensePlate.getClass().getSimpleName()); 
-                psVehicle.executeUpdate();
-            }
-
-            try (PreparedStatement psSpot = conn.prepareStatement(updateSpot)) {
-                psSpot.setString(1, spotId.getSpotId());
-                psSpot.executeUpdate();
-            }
-
-            try (PreparedStatement psTicket = conn.prepareStatement(sqlTicket)) {
-                psTicket.setString(1, ticketId);
-                psTicket.setString(2, licensePlate.getLicensePlate());
-                psTicket.setString(3, spotId.getSpotId());
-                psTicket.setTimestamp(4, Timestamp.valueOf(entryTime));
-                psTicket.setString(5, fineScheme);
-                psTicket.executeUpdate();
-            }
-
-            System.out.println("Ticket entry saved successfully.");
-
-        } catch (SQLException e) {
-            System.out.println("DB Error (saveEntry): " + e.getMessage());
+        // Save Vehicle info (if not exists)
+        try (PreparedStatement psVehicle = conn.prepareStatement(sqlVehicle)) {
+            psVehicle.setString(1, licensePlate.getLicensePlate());
+            psVehicle.setString(2, licensePlate.getClass().getSimpleName()); 
+            psVehicle.executeUpdate();
         }
+
+        // Update Spot status
+        try (PreparedStatement psSpot = conn.prepareStatement(updateSpot)) {
+            psSpot.setString(1, spotId.getSpotId());
+            psSpot.executeUpdate();
+        }
+
+        // Save Ticket info
+        try (PreparedStatement psTicket = conn.prepareStatement(sqlTicket)) {
+            psTicket.setString(1, ticketId);
+            psTicket.setString(2, licensePlate.getLicensePlate());
+            psTicket.setString(3, spotId.getSpotId());
+            psTicket.setTimestamp(4, Timestamp.valueOf(entryTime));
+            psTicket.setString(5, fineScheme);
+            
+            // 2. ADDED this line to save the debt into the ticket record
+            psTicket.setDouble(6, this.carriedOverFine); 
+            
+            psTicket.executeUpdate();
+        }
+
+        System.out.println("Ticket entry saved successfully with carried over fine: RM " + carriedOverFine);
+
+    } catch (SQLException e) {
+        System.out.println("DB Error (saveEntry): " + e.getMessage());
     }
+}
     
     public void closeTicket(LocalDateTime exitTime, double parkingFee,
                             double fineAmount, double totalPaid, String paymentMethod) {
@@ -132,35 +146,48 @@ public class Ticket {
     }
     
     // --- UPDATED FIND ACTIVE TICKET ---
-    // --- UPDATED FIND ACTIVE TICKET ---
-    public static Ticket findActiveByPlate(String plate) {
-        String sql = "SELECT ticketId, licensePlate, spotId, entryTime, fineScheme "
-                + "FROM ticket WHERE licensePlate=? AND exitTime IS NULL";
+   public static Ticket findActiveByPlate(String plate) {
+    // 1. Added vehicleType to the SELECT so we can tell the Factory what to create
+    String sql = "SELECT t.ticketId, t.licensePlate, t.spotId, t.entryTime, t.fineScheme, t.carriedOverFine, v.vehicleType "
+               + "FROM ticket t "
+               + "JOIN vehicle v ON t.licensePlate = v.licensePlate "
+               + "WHERE t.licensePlate=? AND t.exitTime IS NULL";
 
-        try (Connection conn = DatabaseConfig.getConnection(); 
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+    try (Connection conn = DatabaseConfig.getConnection(); 
+         PreparedStatement ps = conn.prepareStatement(sql)) {
 
-            ps.setString(1, plate);
+        ps.setString(1, plate);
 
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    Vehicle v = new Car(rs.getString("licensePlate")); 
-                    ParkingSpot s = new RegularSpot(rs.getString("spotId"), 1); 
+        try (ResultSet rs = ps.executeQuery()) {
+            if (rs.next()) {
+                // 2. Fetch the type from the DB result
+                String typeStr = rs.getString("vehicleType");
+                double debt = rs.getDouble("carriedOverFine");
 
-                    // Ensure the semicolon is present after the closing parenthesis below
-                    return new Ticket(
-                            rs.getString("ticketId"),
-                            v,
-                            s,
-                            rs.getTimestamp("entryTime").toLocalDateTime(),
-                            rs.getString("fineScheme") 
-                    ); // <--- Added missing semicolon here
-                }
+                // 3. Create the vehicle with the correct type and fine
+                Vehicle v = SimpleVehicleFactory.createVehicle(plate, typeStr, debt);
+                
+                // You may need to adjust this depending on how you store Spot details
+                ParkingSpot s = new RegularSpot(rs.getString("spotId"), 1); 
+
+                return new Ticket(
+                        rs.getString("ticketId"),
+                        v,
+                        s,
+                        rs.getTimestamp("entryTime").toLocalDateTime(),
+                        rs.getString("fineScheme"),
+                        debt
+                ); 
             }
-        } catch (SQLException e) {
-            System.out.println("Error finding active ticket: " + e.getMessage());
         }
-        return null;
+    } catch (SQLException e) {
+        System.out.println("Error finding active ticket: " + e.getMessage());
+    }
+    return null;
+}
+    
+    public double getCarriedOverFine() {
+        return carriedOverFine;
     }
 
     // --- GETTER FOR SCHEME ---
@@ -177,3 +204,4 @@ public class Ticket {
     public double getTotalPaid() { return totalPaid; }
     public String getPaymentMethod() { return paymentMethod; }
 }
+

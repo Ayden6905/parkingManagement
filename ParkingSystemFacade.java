@@ -60,40 +60,46 @@ public class ParkingSystemFacade {
         }
     }
 
-  public String handleVehicleEntry(String plate, String vehicleType, String spotId) {
-    // 1. Basic Validation
+public String handleVehicleEntry(String plate, String vehicleType, String spotId) {
     if (plate == null || plate.trim().isEmpty()) {
         return "Error: License plate required.";
     }
 
-    // 2. Business Rule: Prevent duplicate entries for the same car
     if (Ticket.findActiveByPlate(plate) != null) {
-        return "Error: Vehicle with plate " + plate + " is already inside the parking lot.";
+        return "Error: Vehicle with plate " + plate + " is already inside.";
     }
 
     try {
-        // 3. Capture the SNAPSHOT of the current system fine scheme
-        // This is what ensures the "Contract" logic works later at exit
+        // 1. THIS IS THE LINE: Check the database for old fines linked to this plate
+        double existingDebt = fineManager.getOutstandingFineByPlate(plate);
+
+        // 2. Get the active strategy (Fixed/Hourly etc.)
         String activeScheme = getCurrentFineScheme(); 
 
-        // 4. Request TicketService to create the record
-        // Note: We now pass 4 arguments (plate, type, spot, and the scheme)
-        ticketService.createTicket(plate, vehicleType, spotId, activeScheme);
+        // 3. PASS existingDebt HERE: This ensures the NEW ticket knows about the OLD debt
+        ticketService.createTicket(plate, vehicleType, spotId, activeScheme, existingDebt);
 
-        // 5. Retrieve the newly created ticket to show the user
         Ticket ticket = Ticket.findActiveByPlate(plate);
-
         if (ticket != null) {
-            return ticket.generateFormattedTicket();
+            String receipt = ticket.generateFormattedTicket();
+            
+            // 4. Visual confirmation for the user
+            if (existingDebt > 0) {
+                receipt += "\n⚠️ UNPAID FINES DETECTED: RM " + String.format("%.2f", existingDebt);
+            }
+            return receipt;
         }
 
     } catch (Exception e) {
-        System.out.println("Entry Error: " + e.getMessage());
-        return "Error during vehicle entry: " + e.getMessage();
+        return "Error during entry: " + e.getMessage();
     }
-
     return "Error: Failed to generate ticket.";
-}  
+}
+
+public double checkExistingDebt(String plate) {
+    // This calls your fineManager to get the number from the SQL table
+    return fineManager.getOutstandingFineByPlate(plate);
+}
     
     
     
@@ -283,40 +289,41 @@ public class ParkingSystemFacade {
     public List<Object[]> getVehiclesWithFines() {
     List<Object[]> list = new ArrayList<>();
     
-    // 1. We query the DB for all vehicles currently inside (exitTime IS NULL)
-    String sql = "SELECT licensePlate FROM ticket WHERE exitTime IS NULL";
+    // We JOIN ticket (current stay) and vehicle (permanent record of debt)
+    String sql = "SELECT t.licensePlate, t.entryTime, t.fineScheme, v.outstandingFines " +
+                 "FROM ticket t " +
+                 "JOIN vehicle v ON t.licensePlate = v.licensePlate " +
+                 "WHERE t.exitTime IS NULL";
 
     try (Connection conn = DatabaseConfig.getConnection();
          PreparedStatement ps = conn.prepareStatement(sql);
          ResultSet rs = ps.executeQuery()) {
 
         while (rs.next()) {
-            // 2. For every plate found, fetch the full Ticket object
-            // This object now contains the 'fineScheme' saved at entry
-            Ticket t = Ticket.findActiveByPlate(rs.getString("licensePlate"));
-            
-            if (t != null) {
-                // 3. CRITICAL STEP: Set the manager to THIS ticket's scheme
-                // This prevents Car A (Hourly) from being calculated as Fixed
-                fineManager.setStrategy(t.getFineScheme());
-                
-                int hours = t.calculateDurationHours();
-                double fineAmount = fineManager.calculateFine(hours);
+            String plate = rs.getString("licensePlate");
+            String scheme = rs.getString("fineScheme");
+            double pastDebt = rs.getDouble("outstandingFines"); // <--- This pulls the "Not Paid" debt
 
-                // 4. Only add to list if they actually owe money
-                if (fineAmount > 0) {
-                    list.add(new Object[]{
-                        t.getLicensePlate().getLicensePlate(),
-                        t.getEntryTime().toString(),
-                        hours + " hrs",
-                        String.format("%.2f", fineAmount),
-                        "UNPAID (" + t.getFineScheme() + ")" // Displays the scheme applied
-                    });
-                }
+            // Calculate current stay fine
+            Ticket t = Ticket.findActiveByPlate(plate);
+            int hours = t.calculateDurationHours();
+            fineManager.setStrategy(scheme);
+            double currentFine = fineManager.calculateFine(hours);
+
+            // Add to table if they owe ANYTHING
+            if (currentFine > 0 || pastDebt > 0) {
+                list.add(new Object[]{
+                    plate,
+                    rs.getTimestamp("entryTime").toString(),
+                    currentFine,   // Current Fine (RM)
+                    pastDebt,      // Past Debt (RM)
+                    (currentFine + pastDebt), // Total Owed (RM)
+                    "Unpaid/Overstayed"
+                });
             }
         }
     } catch (SQLException e) {
-        e.printStackTrace();
+        System.out.println("Error in getVehiclesWithFines: " + e.getMessage());
     }
     return list;
 }
@@ -372,4 +379,93 @@ public List<Object[]> getTopFineViolators() {
     }
     return violators;
 }
+
+public void processExitWithPostponedFine(String plate) {
+    Ticket ticket = Ticket.findActiveByPlate(plate);
+    if (ticket == null) return;
+
+    // 1. Calculate the fine for the current stay
+    fineManager.setStrategy(ticket.getFineScheme());
+    double currentFine = fineManager.calculateFine(ticket.calculateDurationHours());
+
+    // 2. Save current fine to the license plate 'account' instead of the ticket
+    if (currentFine > 0) {
+        fineManager.postponeFineToAccount(plate, currentFine);
+    }
+
+    // 3. Close the ticket but record 0.00 paid for fines in the ticket record
+    // This allows the car to leave while the 'vehicle' table remembers the debt
+    ticketService.closeTicketAndPay(plate, 3.00, 0.00, "POSTPONED");
+}
+
+
+public double calculateTotalDue(String plate, int currentHours) {
+    // 1. Get current fine based on active strategy (Option A, B, or C)
+    double currentFine = fineManager.calculateFine(currentHours);
+    
+    // 2. Get the "Account" debt linked to the License Plate
+    double historicalDebt = fineManager.getOutstandingFineByPlate(plate);
+    
+    // 3. Base parking fee (e.g., RM 3/hour)
+    double parkingFee = currentHours * 3.00;
+    
+    return currentFine + historicalDebt + parkingFee;
+}
+
+public double calculateFinalBill(String plate) {
+    Ticket ticket = ticketService.getActiveTicket(plate);
+    
+    // 1. Calculate current stay duration
+    long hours = ticket.calculateDuration(); 
+    double currentParkingFee = hours * 3.00; 
+
+    // 2. Calculate current stay fine (if they overstayed > 24 hours)
+    fineManager.setStrategy(ticket.getFineScheme());
+    double currentFine = fineManager.calculateFine(hours); //
+
+    // 3. Get the old debt that was linked to the plate
+    double oldDebt = ticket.getCarriedOverFine(); 
+
+    // 4. Return the grand total
+    return currentParkingFee + currentFine + oldDebt; //
+}
+
+
+public void finalizeExit(String plate, double amountPaid, double totalDue) {
+    if (amountPaid < totalDue) {
+        double unpaidAmount = totalDue - amountPaid;
+        // This moves the data to the permanent vehicle table
+        fineManager.postponeFineToAccount(plate, unpaidAmount); 
+    } else {
+        // If they paid everything, clear the debt
+        fineManager.resetAccountFines(plate); 
+    }
+    // Only close the ticket AFTER saving the debt
+    ticketService.closeTicket(plate);
+}
+
+
+public List<Object[]> getAllOutstandingFines() {
+    List<Object[]> data = new ArrayList<>();
+    // This query finds ANY vehicle that owes money, even if they aren't parked now
+    String sql = "SELECT licensePlate, outstandingFines FROM vehicle WHERE outstandingFines > 0";
+
+    try (Connection conn = DatabaseConfig.getConnection();
+         PreparedStatement ps = conn.prepareStatement(sql);
+         ResultSet rs = ps.executeQuery()) {
+        while (rs.next()) {
+            data.add(new Object[]{
+                rs.getString("licensePlate"),
+                "N/A (Historical)", // Entry Time
+                0.0,                 // Current stay fine
+                rs.getDouble("outstandingFines"), // The Past Fine
+                rs.getDouble("outstandingFines"), // Total
+                "Outstanding Debt"
+            });
+        }
+    } catch (SQLException e) { e.printStackTrace(); }
+    return data;
+}
+
+
 }

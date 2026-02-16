@@ -35,6 +35,7 @@ public class VehicleRepository {
     }
 
     // 2. Find vehicle by license plate (for Exit && Fine checks)
+    // 2. Find vehicle by license plate (for Exit && Fine checks)
     public Vehicle findVehicle(String licensePlate) throws SQLException {
         String sql = "SELECT * FROM vehicle WHERE licensePlate = ?";
         
@@ -48,10 +49,9 @@ public class VehicleRepository {
                     String typeStr = rs.getString("vehicleType");
                     double fines = rs.getDouble("outstandingFines");
                     
-                    // Use Factory to recreate the object
-                    Vehicle v = SimpleVehicleFactory.createVehicle(licensePlate, typeStr);
-                    v.addFine(fines); // Restore old fines
-                    return v;
+                    // FIX: Pass 'fines' as the third argument to match your new Factory signature
+                    // This ensures the object is created with the debt already inside it
+                    return SimpleVehicleFactory.createVehicle(licensePlate, typeStr, fines);
                 }
             }
         }

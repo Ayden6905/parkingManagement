@@ -207,23 +207,31 @@ public class ParkingLot {
     }
     
     // Update the method signature to accept 'scheme'
+// Update the method to include the scheme
 public Ticket parkVehicle(Vehicle v, ParkingSpot s, String scheme) { 
     if (v == null || s == null) return null;
     
-    // ... your existing reservation and availability checks ...
-    
+    // 1. Check availability
     if (!s.isAvailable()) return null;
     if (!s.canParkVehicle(v)) return null;
     
+    // 2. NEW: Fetch the vehicle's outstanding debt from the database
+    // This ensures the ticket knows if the user owes money from a previous visit
+    double existingDebt = 0.0;
+    FineManager fm = new FineManager(); // Or use a shared instance if available
+    existingDebt = fm.getOutstandingFineByPlate(v.getLicensePlate());
+    
+    // 3. Mark the spot as occupied
     s.parkVehicle(v);
     
-    // FIX: Pass the 'scheme' as the 5th argument here
+    // 4. FIX: Provide all 6 arguments to the Ticket constructor
     return new Ticket(
             "T-" + v.getLicensePlate() + "-" + System.currentTimeMillis(),
             v, 
             s, 
             LocalDateTime.now(),
-            scheme // <--- This was missing!
+            scheme,       // Argument 5
+            existingDebt  // Argument 6: The Carried-Over Fine
     );
 }
 }

@@ -11,21 +11,21 @@ package com.mycompany.parkingmanagement;
 // This class creates obj of vehicles
 public class SimpleVehicleFactory {
     
-    // Static method to create the correct subclass based on a string input
-    public static Vehicle createVehicle(String licensePlate, String typeStr) {
+    // Updated method signature to include fines
+    public static Vehicle createVehicle(String licensePlate, String typeStr, double fines) {
         if (typeStr == null) {
             throw new IllegalArgumentException("Vehicle type cannot be null");
         }
 
         switch (typeStr.toUpperCase()) {
             case "CAR":
-                return new Car(licensePlate);
+                return new Car(licensePlate, fines); // Pass fines here
             case "MOTORCYCLE":
-                return new Motorcycle(licensePlate);
+                return new Motorcycle(licensePlate, fines);
             case "SUV":
-                return new SUV(licensePlate);
+                return new SUV(licensePlate, fines);
             case "HANDICAPPED":
-                return new HandicappedVehicle(licensePlate);
+                return new HandicappedVehicle(licensePlate, fines);
             default:
                 throw new IllegalArgumentException("Unknown vehicle type: " + typeStr);
         }

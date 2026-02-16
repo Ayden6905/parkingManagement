@@ -8,8 +8,9 @@ package com.mycompany.parkingmanagement;
  * @author ayden
  */
 public class HandicappedVehicle extends Vehicle {
-    public HandicappedVehicle(String licensePlate) {
-        super(licensePlate, VehicleType.HANDICAPPED);
+    // Added 'double' here 
+    public HandicappedVehicle(String licensePlate, double fines) {
+        super(licensePlate, VehicleType.HANDICAPPED, fines);
     }
 
     @Override

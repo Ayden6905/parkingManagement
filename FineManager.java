@@ -59,5 +59,36 @@ public class FineManager {
         return 0.0;
     }
     
+    public void postponeFineToAccount(String plate, double amount) {
+    // This query creates the row if missing OR adds to the balance if it exists
+    String sql = "INSERT INTO vehicle (licensePlate, vehicleType, outstandingFines) " +
+                 "VALUES (?, 'Car', ?) " +
+                 "ON DUPLICATE KEY UPDATE outstandingFines = outstandingFines + ?";
+
+    try (Connection conn = DatabaseConfig.getConnection();
+         PreparedStatement ps = conn.prepareStatement(sql)) {
+        
+        ps.setString(1, plate);
+        ps.setDouble(2, amount); // Initial value if new
+        ps.setDouble(3, amount); // Add to value if exists
+        
+        int rows = ps.executeUpdate();
+        System.out.println("Data saved to vehicle table. Rows affected: " + rows);
+    } catch (SQLException e) {
+        System.out.println("CRITICAL ERROR: Could not save fine! " + e.getMessage());
+    }
+}
+    
+    public void resetAccountFines(String plate) {
+        String sql = "UPDATE vehicle SET outstandingFines = 0.0 WHERE licensePlate = ?";
+        try (Connection conn = DatabaseConfig.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, plate);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+    
     
 }

@@ -22,10 +22,9 @@ public class TicketService {
         this.vehicleFactory = new VehicleFactory();
     }
     
-    public String createTicket(String plate, String vehicleType, String spotId, String scheme) {
+   public String createTicket(String plate, String vehicleType, String spotId, String scheme, double carriedOverFine) {
     // 1. Create the vehicle object using your factory
-    // Ensure vehicleFactory is already initialized in this class
-    Vehicle vehicle = vehicleFactory.createVehicle(vehicleType, plate);
+    Vehicle vehicle = vehicleFactory.createVehicle(vehicleType, plate, carriedOverFine);
     
     // 2. Find the parking spot via the Singleton ParkingLot
     ParkingSpot spot = ParkingLot.getInstance().findSpotById(spotId);
@@ -34,16 +33,44 @@ public class TicketService {
     }
     
     // 3. Generate a unique Ticket ID
-    String ticketId = "T-" + plate + "-" + System.currentTimeMillis();
+    String ticketId = "Ts-" + plate + "-" + System.currentTimeMillis();
     
-    // 4. Instantiate Ticket with the NEW scheme parameter
-    // This locks the 'Fixed' or 'Hourly' rule to this specific vehicle row
-    Ticket ticket = new Ticket(ticketId, vehicle, spot, LocalDateTime.now(), scheme);
+    // 4. Instantiate Ticket with the scheme AND the carried-over fine
+    // This locks the old debt to this specific ticket record
+    Ticket ticket = new Ticket(ticketId, vehicle, spot, LocalDateTime.now(), scheme, carriedOverFine);
     
-    // 5. Save to the database (this triggers the SQL INSERT with fineScheme)
+    // 5. Save to the database
+    // Ensure your ticket.saveEntry() SQL includes the new carriedOverFine column
     ticket.saveEntry();
 
     return ticketId;
+}
+   
+   
+   // Add this to handle simple closing without payment (used in your finalizeExit)
+public void closeTicket(String plate) {
+    String sql = "UPDATE ticket SET exitTime = ? WHERE licensePlate = ? AND exitTime IS NULL";
+    try (Connection conn = DatabaseConfig.getConnection();
+         PreparedStatement ps = conn.prepareStatement(sql)) {
+        
+        ps.setTimestamp(1, Timestamp.valueOf(LocalDateTime.now()));
+        ps.setString(2, plate);
+        ps.executeUpdate();
+        
+        // Also free the spot
+        Ticket t = Ticket.findActiveByPlate(plate);
+        if(t != null) {
+            freeParkingSpot(t.getSpotId().getSpotId());
+        }
+        
+    } catch (SQLException e) {
+        System.out.println("Error closing ticket: " + e.getMessage());
+    }
+}
+
+   public Ticket getActiveTicket(String plate) {
+    // Bridges the call to the Ticket class static method
+    return Ticket.findActiveByPlate(plate);
 }
     
     public Receipt closeTicketAndPay(String plate,

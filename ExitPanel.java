@@ -96,8 +96,14 @@ public class ExitPanel extends JPanel {
 
         if (methodIdx != -1) {
             String method = options[methodIdx];
-            // Task: Execute payment logic and persist to DB
+            String plate = currentSummary.getPlate();
+            
+            // 1. Calculate the TOTAL amount that was supposed to be paid (Parking + ALL Fines)
+        double totalDueIncludingFines = currentSummary.getParkingFee() + currentSummary.getFineAmount();
+
+// Task: Execute payment logic and persist to DB
             Receipt receipt = facade.processPayment(currentSummary.getPlate(), 3.00, finePaid, method);
+            facade.finalizeExit(plate, total, totalDueIncludingFines);
             showReceipt(receipt);
         }
     }
