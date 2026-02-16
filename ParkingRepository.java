@@ -152,7 +152,7 @@ public class ParkingRepository {
 
             ps.setString(1, r.getReservationId());
             ps.setString(2, r.getLicensePlate());
-            ps.setString(3, r.getSpotId().getSpotId());
+            ps.setString(3, r.getSpot().getSpotId());
             ps.setTimestamp(4, Timestamp.valueOf(r.getStartTime()));
             ps.setTimestamp(5, Timestamp.valueOf(r.getEndTime()));
             ps.setString(6, r.getStatus().name());

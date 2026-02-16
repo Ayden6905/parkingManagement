@@ -25,6 +25,8 @@ public class ParkingSystemFacade {
         this.fineManager = new FineManager();
         this.ticketService = new TicketService();
 
+        ParkingLot.getInstance().loadReservationsFromDb();
+        
         String savedScheme = getCurrentFineScheme();
         this.fineManager.setStrategy(savedScheme);
         System.out.println("System loaded with Fine Scheme: " + savedScheme);
@@ -73,19 +75,33 @@ public class ParkingSystemFacade {
     try {
         // 1. Check for old fines linked to this plate
         double existingDebt = checkExistingDebt(plate);
-
-        // 2. Get the active strategy (Fixed/Progressive etc.)
+        // 2. Get the active strategy
         String activeScheme = getCurrentFineScheme(); 
 
-        // 3. IMPORTANT: Your ticketService.createTicket MUST accept these extra parameters
-        // to save them into the DB 'ticket' table.
+        // --- NEW RESERVATION LOGIC START ---
+        // 3. Check if this is a reserved car entering its specific spot
+        Reservation res = ParkingLot.getInstance().findActiveReservation(plate);
+        
+        if (res != null && res.getSpot().getSpotId().equalsIgnoreCase(spotId)) {
+            // Activate the reservation (this handles status update and DB updates)
+            Ticket resTicket = ParkingLot.getInstance().activateReservation(plate);
+            if (resTicket != null) {
+                String receipt = resTicket.generateFormattedTicket();
+                receipt += "\n[RESERVATION ACTIVATED]";
+                if (existingDebt > 0) {
+                    receipt += "\n⚠️ UNPAID FINES DETECTED: RM " + String.format("%.2f", existingDebt);
+                }
+                return receipt;
+            }
+        }
+        // --- NEW RESERVATION LOGIC END ---
+
+        // 4. Normal entry if no reservation was found/matched
         ticketService.createTicket(plate, vehicleType, spotId, isHandicappedCardHolder, activeScheme, existingDebt);
 
         Ticket ticket = Ticket.findActiveByPlate(plate);
         if (ticket != null) {
             String receipt = ticket.generateFormattedTicket();
-            
-            // 4. Visual confirmation for the UI
             if (existingDebt > 0) {
                 receipt += "\n⚠️ UNPAID FINES DETECTED: RM " + String.format("%.2f", existingDebt);
             }
@@ -200,16 +216,34 @@ public double checkExistingDebt(String plate) {
 }
 
     //available spots
-    public List<String> getAvailableSpotsFor(String plate, String vehicleType, boolean cardHolder) {
-        Vehicle v = vehicleFactory.createVehicle(vehicleType, "TEMP");
-        v.setHandicappedCardHolder(cardHolder);
+    public List<String> getAvailableSpotsFor(String plate, String type, boolean isHandicapped) {
+    List<String> spotIds = new ArrayList<>();
+    
+    // 1. Check for active reservation first
+    // Assuming ParkingLot has a method to find a reservation by plate
+    Reservation res = ParkingLot.getInstance().findActiveReservation(plate);
 
-        List<String> ids = new ArrayList<>();
-        for (ParkingSpot s : ParkingLot.getInstance().getAvailableSpots(v, plate)) {
-            ids.add(s.getSpotId());
-        }
-        return ids;
+    if (res != null) {
+        // SMART LOGIC: If they have a reservation, they ONLY see that one spot
+        spotIds.add(res.getSpot().getSpotId());
+        return spotIds; 
     }
+
+    // 2. If no reservation, proceed with normal logic (excluding reserved rows)
+    // Fetch normal available spots from your repository or ParkingLot
+    List<ParkingSpot> availableSpots = ParkingLot.getInstance().getAvailableSpots(
+        VehicleFactory.createVehicle(plate, type) // Helper to create vehicle object
+    );
+
+    for (ParkingSpot spot : availableSpots) {
+        // Ensure regular users don't see 'Reserved' spots in their list
+        if (!(spot instanceof ReservedSpot)) {
+            spotIds.add(spot.getSpotId());
+        }
+    }
+    
+    return spotIds;
+}
 
     //payment processing
     public Receipt processPayment(String plate,

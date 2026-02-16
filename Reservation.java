@@ -59,10 +59,14 @@ public class Reservation {
         return reservationId;
     }
 
-    public ReservedSpot getSpotId() {
-        return spotId;
-    }
+    public ParkingSpot getSpot() {
+    return this.spotId; // Changed from reservedSpot to spotId
+}
 
+public String getSpotIdValue() {
+    return this.spotId.getSpotId(); // Changed from reservedSpot to spotId
+}
+    
     public LocalDateTime getStartTime() {
         return startTime;
     }

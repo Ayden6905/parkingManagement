@@ -60,6 +60,43 @@ public class ParkingLot {
         return reservations;
     }
     
+    public Ticket activateReservation(String plate) {
+    LocalDateTime now = LocalDateTime.now();
+    Reservation activeRes = null;
+
+    // 1. Find the active reservation
+    for (Reservation r : reservations) {
+        if (r.getLicensePlate().equalsIgnoreCase(plate) && r.getStatus() == ReservationStatus.ACTIVE) {
+            activeRes = r;
+            break;
+        }
+    }
+
+    if (activeRes == null) return null;
+
+    // 2. Get the spot from the reservation
+    ParkingSpot spot = activeRes.getSpot(); 
+    
+    spot.setStatus(SpotStatus.OCCUPIED);
+    updateDbSpotStatus(spot.getSpotId(), "Occupied");
+
+    // 3. FIX: Define the vehicle first, THEN pass it to the Ticket
+   Vehicle v = new Car(plate, 0.0);
+    
+    Ticket ticket = new Ticket(
+        "T-RES-" + plate + "-" + System.currentTimeMillis(),
+        v,            // Just pass 'v' here
+        spot,
+        now,
+        "Reservation", 
+        0.0 
+    );
+
+    // 4. Update status to USED (matching your Reservation.java method)
+    activeRes.markUsed();
+    return ticket;
+}
+    
     public void addFloor(Floor floor)
     {
         floors.add(floor);
@@ -146,46 +183,32 @@ public class ParkingLot {
     
      
 public Receipt exitVehicle(String licensePlate) {
-    // 1. Find the active ticket
     Ticket t = Ticket.findActiveByPlate(licensePlate);
+    if (t == null) return null;
 
-    if (t == null) return null; 
+    LocalDateTime exitTime = LocalDateTime.now();
+    double fineAmount = 0.0;
 
-    // 2. Identify the spot and release it in memory
-    // This makes the spot available for the next car immediately in the UI
+    // FETCH the deadline from the database screenshot you provided
+    LocalDateTime reservedEndTime = getReservedEndTimeFromDb(licensePlate); 
+
+    if (reservedEndTime != null && exitTime.isAfter(reservedEndTime)) {
+        // Calculate overstay: RM 10.00 per hour
+        long overstayHours = java.time.Duration.between(reservedEndTime, exitTime).toHours();
+        if (overstayHours < 1) overstayHours = 1; // Round up to 1 hour minimum fine
+        fineAmount = overstayHours * 10.0;
+    }
+
+    // Release the spot in the UI and Database
     ParkingSpot spot = t.getSpot();
     if (spot != null) {
         spot.setStatus(SpotStatus.AVAILABLE);
-        
-        // 3. Release the spot in the Database
-        // This ensures the AdminPanel 'Refresh' shows the correct count
-        ParkingRepository repo = new ParkingRepository();
-        repo.releaseSpot(spot.getSpotId());
+        new ParkingRepository().releaseSpot(spot.getSpotId());
     }
 
-    // Existing logic
-    LocalDateTime exitTime = LocalDateTime.now();
-    double parkingFee = 0.0; // You can add your calculation logic here later
-    double fineAmount = 0.0;
-    double totalPaid = 0.0;
-    String paymentMethod = "N/A";
-
-    t.closeTicket(exitTime, parkingFee, fineAmount, totalPaid, paymentMethod);
-
-    // 4. Create receipt
-    return new Receipt(t, parkingFee, fineAmount, totalPaid, t.getPaymentMethod());
-}
-
-    
-    public ParkingSpot findSpotById(String spotId) {
-    for (Floor floor : floors) {
-        for (ParkingSpot spot : floor.getAllSpots()) {
-            if (spot.getSpotId().equalsIgnoreCase(spotId)) {
-                return spot;
-            }
-        }
-    }
-    return null;
+    // Close ticket with the calculated fine
+    t.closeTicket(exitTime, 0.0, fineAmount, fineAmount, "Credit Card");
+    return new Receipt(t, 0.0, fineAmount, fineAmount, "Credit Card");
 }
     
     public java.util.Map<String, ParkingSpot> getSpots() {
@@ -249,6 +272,21 @@ public Ticket parkVehicle(Vehicle v, ParkingSpot s, String scheme) {
         return repo.getAllParkingSpots();
     }
     
+    public Reservation findActiveReservation(String plate) {
+    if (plate == null) return null;
+    LocalDateTime now = LocalDateTime.now();
+    
+    for (Reservation r : reservations) {
+        // Check plate match AND if the reservation is currently valid (time-wise)
+        if (r.getLicensePlate().equalsIgnoreCase(plate.trim()) 
+            && r.getStatus() == ReservationStatus.ACTIVE
+            && r.isValid(now)) {
+            return r;
+        }
+    }
+    return null;
+}
+    
     
     private boolean hasAnyActiveReservationForPlate(String plate, LocalDateTime now) {
 
@@ -275,30 +313,106 @@ public Ticket parkVehicle(Vehicle v, ParkingSpot s, String scheme) {
     }
     
     public List<ParkingSpot> getAvailableSpots(Vehicle v, String plate) {
+    List<ParkingSpot> result = new ArrayList<>();
+    LocalDateTime now = LocalDateTime.now();
 
-        List<ParkingSpot> result = new ArrayList<>();
-        LocalDateTime now = LocalDateTime.now();
+    // 1. Look for a specific active reservation for this plate
+    Reservation activeRes = null;
+    for (Reservation r : reservations) {
+        if (r.getLicensePlate().equalsIgnoreCase(plate) && r.isValid(now)) {
+            activeRes = r;
+            break; 
+        }
+    }
 
-        boolean hasReservation = hasAnyActiveReservationForPlate(plate, now);
-
+    // 2. The Decision Logic
+    if (activeRes != null) {
+        // Only show the ONE spot they reserved.
+        result.add(activeRes.getSpot());
+    } else {
+        // Only show spots that are NOT reserved for someone else.
         for (Floor floor : floors) {
             for (ParkingSpot spot : floor.getAllSpots()) {
-
-                if (!spot.isAvailable()) {
-                    continue;
+                if (spot.isAvailable() && spot.canParkVehicle(v)) {
+                    // Normal users cannot see Reserved Spots
+                    if (!(spot instanceof ReservedSpot)) {
+                        result.add(spot);
+                    }
                 }
-                if (!spot.canParkVehicle(v)) {
-                    continue;
-                }
-                
-                if (spot instanceof ReservedSpot && !hasReservation) {
-                    continue;
-                }
-                result.add(spot);
             }
         }
-        return result;
     }
+    return result;
+}
     
+    
+    // Helper to fetch the deadline from the DB screenshot you provided
+private LocalDateTime getReservedEndTimeFromDb(String plate) {
+    String sql = "SELECT endTime FROM reservation WHERE plate = ? AND status = 'ACTIVE' ORDER BY startTime DESC LIMIT 1";
+    try (Connection conn = DatabaseConfig.getConnection();
+         PreparedStatement ps = conn.prepareStatement(sql)) {
+        
+        ps.setString(1, plate);
+        try (ResultSet rs = ps.executeQuery()) {
+            if (rs.next()) {
+                return rs.getTimestamp("endTime").toLocalDateTime();
+            }
+        }
+    } catch (SQLException e) {
+        e.printStackTrace();
+    }
+    return null;
+}
 
+// Helper to update the spot status so the Dashboard (AdminPanel) reflects the change
+private void updateDbSpotStatus(String spotId, String status) {
+    String sql = "UPDATE parkingSpot SET status = ? WHERE spotId = ?";
+    try (Connection conn = DatabaseConfig.getConnection();
+         PreparedStatement ps = conn.prepareStatement(sql)) {
+        ps.setString(1, status);
+        ps.setString(2, spotId);
+        ps.executeUpdate();
+    } catch (SQLException e) {
+        e.printStackTrace();
+    }
+}
+
+public ParkingSpot findSpotById(String spotId) {
+    for (Floor floor : floors) {
+        for (ParkingSpot spot : floor.getAllSpots()) {
+            if (spot.getSpotId().equalsIgnoreCase(spotId)) {
+                return spot;
+            }
+        }
+    }
+    return null;
+}
+
+
+// Inside ParkingLot.java
+// Inside ParkingLot.java
+public void loadReservationsFromDb() {
+    this.reservations.clear();
+    String sql = "SELECT * FROM reservation WHERE status = 'ACTIVE'";
+    
+    try (Connection conn = DatabaseConfig.getConnection();
+         PreparedStatement ps = conn.prepareStatement(sql);
+         ResultSet rs = ps.executeQuery()) {
+        
+        while (rs.next()) {
+            String plate = rs.getString("plate");
+            String spotId = rs.getString("spotId");
+            LocalDateTime end = rs.getTimestamp("endTime").toLocalDateTime();
+            
+            // Find the spot object from your existing floors
+            ParkingSpot spot = findSpotById(spotId); 
+            if (spot != null) {
+                Reservation res = new Reservation(plate, spot, end);
+                this.reservations.add(res);
+            }
+        }
+    } catch (SQLException e) {
+        e.printStackTrace();
+    }
+}
 }
