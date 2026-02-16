@@ -65,6 +65,27 @@ public void closeTicket(String plate) {
         
     } catch (SQLException e) {
         System.out.println("Error closing ticket: " + e.getMessage());
+    public String createTicket(String plate, String vehicleType, String spotId, boolean isHandicappedCardHolder) {
+        Vehicle vehicle = vehicleFactory.createVehicle(vehicleType, plate);
+        
+        //newly added
+        vehicle.setHandicappedCardHolder(isHandicappedCardHolder);
+        
+        ParkingSpot spot = ParkingLot.getInstance().findSpotById(spotId);
+        if (spot == null) {
+            throw new RuntimeException("Spot not found: " + spotId);
+        }
+        
+        //newly added
+        if (!spot.canParkVehicle(vehicle)) {
+            throw new RuntimeException("Vehicle not allowed to park in this spot.");
+        }        
+        
+        String ticketId = "T-" + plate + "-" + System.currentTimeMillis();
+        Ticket ticket = new Ticket(ticketId, vehicle, spot, LocalDateTime.now());
+        ticket.saveEntry();
+
+        return ticketId;
     }
 }
 

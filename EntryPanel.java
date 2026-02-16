@@ -18,6 +18,7 @@ public class EntryPanel extends JPanel {
     private JTextField plateField;
     private JComboBox<String> typeCombo;
     private JLabel lblDebtWarning;
+    private JCheckBox handicappedCheck; //check if handicapped or not
 
     public EntryPanel(ParkingSystemFacade facade, MainFrame mainFrame) {
         this.facade = facade;
@@ -38,6 +39,14 @@ public class EntryPanel extends JPanel {
         JLabel lblType = new JLabel("Vehicle Type:");
         String[] types = {"Car", "Motorcycle", "SUV", "Handicapped"}; 
         typeCombo = new JComboBox<>(types);
+        
+        //handicapped card holder
+        handicappedCheck = new JCheckBox("Handicapped driver (card holder)");
+        handicappedCheck.setBackground(Color.WHITE);
+        
+        //reservation button
+        JButton btnReserve = new JButton("Reserve Parking Spot");
+        btnReserve.addActionListener(e -> mainFrame.showReservation());
         
         JButton btnPark = new JButton("Assign Spot & Park");
         JButton btnBack = new JButton("Back to Main Menu");
@@ -62,21 +71,28 @@ public class EntryPanel extends JPanel {
         gbc.gridwidth = 2;
         add(lblDebtWarning, gbc);
 
-        gbc.gridy = 3; gbc.gridx = 0; gbc.gridwidth = 2; add(btnPark, gbc);
-        gbc.gridy = 4; add(btnBack, gbc);
+        gbc.gridy = 3; gbc.gridx = 0; gbc.gridwidth = 2; 
+        add(handicappedCheck, gbc);      
+        
+        gbc.gridy = 4;
+        add(btnReserve, gbc);
+        
+        gbc.gridy = 5; add(btnPark, gbc);
+        gbc.gridy = 6; add(btnBack, gbc);
         
         btnBack.addActionListener(e -> mainFrame.showHome());
         
         btnPark.addActionListener(e -> {
             String plate = plateField.getText().trim().toUpperCase();
             String type = (String) typeCombo.getSelectedItem();
+            boolean isCardHolder = handicappedCheck.isSelected();
 
             if (plate.isEmpty()) {
                 JOptionPane.showMessageDialog(this, "Please enter license plate.");
                 return;
             }
-
-            List<String> spots = facade.getAvailableSpots();
+               
+            List<String> spots = facade.getAvailableSpotsFor(plateField.getText().trim(), type, handicappedCheck.isSelected());
             if (spots.isEmpty()) {
                 JOptionPane.showMessageDialog(this, "No available spots.");
                 return;
@@ -112,7 +128,7 @@ public class EntryPanel extends JPanel {
             );
 
             if (selectedSpot != null) {
-                String ticketResult = facade.handleVehicleEntry(plate, type, selectedSpot);
+                String ticketResult = facade.handleVehicleEntry(plate, type, selectedSpot, isCardHolder);
 
                 JTextArea textArea = new JTextArea(ticketResult);
                 textArea.setEditable(false);
@@ -121,11 +137,23 @@ public class EntryPanel extends JPanel {
                         "Ticket Issued",
                         JOptionPane.PLAIN_MESSAGE);
                 
-                if (!ticketResult.startsWith("Error")) {
-            plateField.setText("");
-            mainFrame.showHome(); // Take them back after parking
-                }
-            }
-        });
+                // Check if the operation was successful
+if (ticketResult.startsWith("Success")) {
+    // 1. Clear the inputs
+    plateField.setText("");
+    handicappedCheck.setSelected(false);
+    
+    // 2. Show the success message (The user needs to see their ticket ID!)
+    JTextArea textArea = new JTextArea(ticketResult);
+    textArea.setEditable(false);
+    JOptionPane.showMessageDialog(this, new JScrollPane(textArea), "Ticket Issued", JOptionPane.PLAIN_MESSAGE);
+    
+    // 3. Navigate back to home
+    mainFrame.showHome(); 
+} else {
+    // If it starts with "Error" or anything else, just show the error message
+    JOptionPane.showMessageDialog(this, ticketResult, "Entry Error", JOptionPane.ERROR_MESSAGE);
+}
+        });                
     }
 }

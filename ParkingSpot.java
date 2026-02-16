@@ -13,9 +13,9 @@ public abstract class ParkingSpot {
     private SpotStatus status;
     private double hourlyRate;
     private int floorNumber;
-    private Vehicle currentVehicle;
+    private Vehicle currentVehicle;    
     
-    protected ParkingSpot(String spotId, int floorNumber, SpotType spotType, double hourlyRate)
+    public ParkingSpot(String spotId, int floorNumber, SpotType spotType, double hourlyRate)
     {
         this.spotId = spotId;
         this.floorNumber = floorNumber;
@@ -25,9 +25,21 @@ public abstract class ParkingSpot {
         this.currentVehicle = null;
     }
     
+    public SpotStatus getStatus(){
+        return status;
+    }
+    
+    public void setStatus(SpotStatus status) {
+        this.status = status;
+    }
+    
     public boolean isAvailable()
     {
         return status == SpotStatus.AVAILABLE;
+    }
+    
+    public boolean isOccupied() {
+        return status == SpotStatus.OCCUPIED;
     }
     
     public void parkVehicle(Vehicle v)
@@ -50,7 +62,7 @@ public abstract class ParkingSpot {
         return spotId;
     }
     
-    public double getHourlyRte()
+    public double getHourlyRate()
     {
         return hourlyRate;
     }
@@ -70,5 +82,5 @@ public abstract class ParkingSpot {
         return currentVehicle;
     }
     
-    protected abstract boolean canParkVehicle(Vehicle v);
+        public abstract boolean canParkVehicle(Vehicle vehicle);
 }

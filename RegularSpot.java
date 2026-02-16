@@ -13,7 +13,7 @@ public class RegularSpot extends ParkingSpot {
     }
 
     @Override
-    protected boolean canParkVehicle(Vehicle v) {
+    public boolean canParkVehicle(Vehicle v) {
         VehicleType t = v.getVehicleType();
         return t == VehicleType.CAR || t == VehicleType.SUV || t == VehicleType.HANDICAPPED;
     }

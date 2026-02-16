@@ -9,6 +9,8 @@ package com.mycompany.parkingmanagement;
  */
 import java.sql.*;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
 
 public class ParkingRepository {
 
@@ -95,6 +97,71 @@ public class ParkingRepository {
             if (conn != null) {
                 try { conn.setAutoCommit(true); conn.close(); } catch (SQLException e) { e.printStackTrace(); }
             }
+        }
+    }
+    
+    public List<ParkingSpot> getAllParkingSpots() {
+
+        List<ParkingSpot> list = new ArrayList<>();
+        String sql = "SELECT spotId, floorNumber, spotType, status, hourlyRate FROM parkingSpot";
+
+        try (Connection conn = DatabaseConfig.getConnection(); PreparedStatement ps = conn.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
+
+            while (rs.next()) {
+
+                String spotId = rs.getString("spotId");
+                String spotType = rs.getString("spotType");
+                String statusStr = rs.getString("status");             
+                int floorNumber = rs.getInt("floorNumber");
+
+                ParkingSpot spot;
+
+                switch (spotType.toUpperCase()) {
+                    case "COMPACT":
+                        spot = new CompactSpot(spotId, floorNumber);
+                        break;
+                    case "REGULAR":
+                        spot = new RegularSpot(spotId, floorNumber);
+                        break;
+                    case "HANDICAPPED":
+                        spot = new HandicappedSpot(spotId, floorNumber);
+                        break;
+                    case "RESERVED":
+                        spot = new ReservedSpot(spotId, floorNumber);
+                        break;
+                    default:
+                        throw new RuntimeException("Unknown spot type: " + spotType);
+                }
+
+                spot.setStatus(SpotStatus.valueOf(statusStr.toUpperCase()));
+                list.add(spot);
+            }
+
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+
+        return list;
+    }
+    
+    public boolean createReservation(Reservation r) {
+        String sql = "INSERT INTO reservation (reservationId, plate, spotId, startTime, endTime, status) "
+                + "VALUES (?, ?, ?, ?, ?, ?)";
+
+        try (Connection conn = DatabaseConfig.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, r.getReservationId());
+            ps.setString(2, r.getLicensePlate());
+            ps.setString(3, r.getSpotId().getSpotId());
+            ps.setTimestamp(4, Timestamp.valueOf(r.getStartTime()));
+            ps.setTimestamp(5, Timestamp.valueOf(r.getEndTime()));
+            ps.setString(6, r.getStatus().name());
+
+            return ps.executeUpdate() == 1;
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
         }
     }
 }

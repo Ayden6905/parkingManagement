@@ -19,6 +19,7 @@ public class ParkingSystemFacade {
 
     private final FineManager fineManager;
     private final TicketService ticketService;
+    private VehicleFactory vehicleFactory = new VehicleFactory();
 
     public ParkingSystemFacade() {
         this.fineManager = new FineManager();
@@ -60,9 +61,31 @@ public class ParkingSystemFacade {
         }
     }
 
-public String handleVehicleEntry(String plate, String vehicleType, String spotId) {
-    if (plate == null || plate.trim().isEmpty()) {
-        return "Error: License plate required.";
+    //vehicle entry
+    public String handleVehicleEntry(String plate, String vehicleType, String spotId, boolean isHandicappedCardHolder) {
+
+        if (plate == null || plate.trim().isEmpty()) {
+            return "Error: License plate required.";
+        }
+
+        if (Ticket.findActiveByPlate(plate) != null) {
+            return "Error: Vehicle with plate " + plate + " is already inside.";
+        }
+
+        try {
+            ticketService.createTicket(plate, vehicleType, spotId, isHandicappedCardHolder);
+
+            Ticket ticket = Ticket.findActiveByPlate(plate);
+
+            if (ticket != null) {
+                return ticket.generateFormattedTicket();
+            }
+
+        } catch (Exception e) {
+            return "Error during vehicle entry: " + e.getMessage();
+        }
+
+        return "Error: Failed to generate ticket.";
     }
 
     if (Ticket.findActiveByPlate(plate) != null) {
@@ -198,25 +221,15 @@ public double checkExistingDebt(String plate) {
 }
 
     //available spots
-    public List<String> getAvailableSpots() {
+    public List<String> getAvailableSpotsFor(String plate, String vehicleType, boolean cardHolder) {
+        Vehicle v = vehicleFactory.createVehicle(vehicleType, "TEMP");
+        v.setHandicappedCardHolder(cardHolder);
 
-        List<String> spots = new java.util.ArrayList<>();
-
-        String sql = "SELECT spotId FROM parkingSpot WHERE status='Available'";
-
-        try (Connection conn = DatabaseConfig.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
-
-            while (rs.next()) {
-                spots.add(rs.getString("spotId"));
-            }
-
-        } catch (SQLException e) {
-            System.out.println("Error fetching spots: " + e.getMessage());
+        List<String> ids = new ArrayList<>();
+        for (ParkingSpot s : ParkingLot.getInstance().getAvailableSpots(v, plate)) {
+            ids.add(s.getSpotId());
         }
-
-        return spots;
+        return ids;
     }
 
     //payment processing
@@ -513,4 +526,20 @@ public List<Object[]> getPastDebtReport() {
 }
 
 
+    //newly added
+    public double calculateParkingFee(Vehicle v, ParkingSpot spot, int hours) {
+
+        // for handicapped driver
+        if (v.isHandicappedCardHolder()) {
+            
+            if (spot.getSpotType() == SpotType.HANDICAPPED) {
+                return 0.0;
+            }
+            
+            if (spot.getSpotType() == SpotType.REGULAR) {
+                return 2.0;                
+            }
+        }
+        return hours * spot.getHourlyRate();
+    }
 }
