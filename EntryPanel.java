@@ -2,7 +2,7 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
-
+package com.mycompany.parkingmanagement;
 /**
  *
  * @author NurqistinaAtashah
@@ -35,166 +35,102 @@ public class EntryPanel extends JPanel {
         title.setFont(new Font("SansSerif", Font.BOLD, 20));
         
         plateField = new JTextField(15);
-        // Requirement: SUV/Truck as one category
         typeCombo = new JComboBox<>(new String[]{"Car", "Motorcycle", "SUV/Truck"});
         handicappedCheck = new JCheckBox("Handicapped card holder");
         handicappedCheck.setBackground(Color.WHITE);
         
         msgLabel = new JLabel(" ");
+        msgLabel.setForeground(Color.BLUE);
         JButton btnPark = new JButton("Assign Spot & Park");
         JButton btnBack = new JButton("Back to Main Menu");
 
-        // --- Layout ---
-       // GridY 0: Title
-gbc.gridx = 0; gbc.gridy = 0; gbc.gridwidth = 2; 
-add(title, gbc);
+        // --- Layout Mapping ---
+        gbc.gridx = 0; gbc.gridy = 0; gbc.gridwidth = 2; 
+        add(title, gbc);
 
-// GridY 1: Plate
-gbc.gridwidth = 1;
-gbc.gridy = 1; gbc.gridx = 0; 
-add(new JLabel("License Plate:"), gbc);
-gbc.gridx = 1; 
-add(plateField, gbc);
+        gbc.gridwidth = 1;
+        gbc.gridy = 1; gbc.gridx = 0; 
+        add(new JLabel("License Plate:"), gbc);
+        gbc.gridx = 1; 
+        add(plateField, gbc);
 
-// GridY 2: Type
-gbc.gridy = 2; gbc.gridx = 0; 
-add(new JLabel("Vehicle Type:"), gbc);
-gbc.gridx = 1; 
-add(typeCombo, gbc);
+        gbc.gridy = 2; gbc.gridx = 0; 
+        add(new JLabel("Vehicle Type:"), gbc);
+        gbc.gridx = 1; 
+        add(typeCombo, gbc);
 
-// GridY 3: Handicapped Checkbox
-gbc.gridy = 3; gbc.gridx = 0; gbc.gridwidth = 2; 
-add(handicappedCheck, gbc);
+        gbc.gridy = 3; gbc.gridx = 0; gbc.gridwidth = 2; 
+        add(handicappedCheck, gbc);
 
-// GridY 4: Assign Spot Button
-gbc.gridy = 4; gbc.gridx = 0; gbc.gridwidth = 2; 
-add(btnPark, gbc);
+        gbc.gridy = 4; gbc.gridx = 0; gbc.gridwidth = 2; 
+        add(btnPark, gbc);
 
-// GridY 5: Back Button
-gbc.gridy = 5; gbc.gridx = 0; gbc.gridwidth = 2; 
-add(btnBack, gbc);
+        gbc.gridy = 5; gbc.gridx = 0; gbc.gridwidth = 2; 
+        add(btnBack, gbc);
 
-// GridY 6: Status Message
-gbc.gridy = 6; gbc.gridx = 0; gbc.gridwidth = 2; 
-add(msgLabel, gbc);
-        // --- Button Logic ---
+        gbc.gridy = 6; gbc.gridx = 0; gbc.gridwidth = 2; 
+        add(msgLabel, gbc);
+
+        // --- Logic ---
         btnBack.addActionListener(e -> mainFrame.showHome());
 
         btnPark.addActionListener(e -> {
             String plate = plateField.getText().trim();
+            String type = (String) typeCombo.getSelectedItem();
+            boolean isCardHolder = handicappedCheck.isSelected();
+
             if (plate.isEmpty()) {
                 JOptionPane.showMessageDialog(this, "Please enter license plate.");
                 return;
             }
                 
+            // 1. Get available spots from Facade
             List<String> optionsToShow = facade.getAvailableSpotsFor(plate, type, isCardHolder);
 
-            if (optionsToShow.isEmpty()) {
-                JOptionPane.showMessageDialog(this, "No available spots.");
-                return;
-            }
-
-            // Create vehicle for filtering
-            Vehicle v = createVehicle(plate);
-            
-            // This method in ParkingLot handles the Reserved + Type logic
-            List<ParkingSpot> options = ParkingLot.getInstance().getAvailableAndReservedSpots(v, plate);
-
-            if (options.isEmpty()) {
+            if (optionsToShow == null || optionsToShow.isEmpty()) {
                 JOptionPane.showMessageDialog(this, "No valid spots available for this vehicle.");
                 return;
             }
 
-            // --- SPOT SELECTION ---            
-            String titleMsg = "Choose Spot";
+            // 2. Show Spot Selection Dialog
             String selectedSpot = (String) JOptionPane.showInputDialog(
                     this,
-                    "Select Available Spot:",
-                    titleMsg,
+                    "Select an available spot for " + plate + ":",
+                    "Spot Assignment",
                     JOptionPane.PLAIN_MESSAGE,
                     null,
                     optionsToShow.toArray(),
                     optionsToShow.get(0)
             );
 
+            // 3. Process Entry if a spot was selected
+            if (selectedSpot != null) {
+                // Assuming your Facade returns a formatted string with the Ticket details
+                String ticketResult = facade.handleVehicleEntry(plate, type, selectedSpot, isCardHolder);
 
-            // --- TICKET ISSUANCE ---
-            String ticketResult = facade.handleVehicleEntry(plate, type, selectedSpot, isCardHolder);
-
-            if (ticketResult == null || ticketResult.startsWith("Error")) {
-                JOptionPane.showMessageDialog(
-                        this,
-                        ticketResult,
-                        "Entry Error",
-                        JOptionPane.ERROR_MESSAGE
-                );
-                return;
-            }
-
-            plateField.setText("");
-            handicappedCheck.setSelected(false);
-
-            JTextArea textArea = new JTextArea(ticketResult);
-            textArea.setEditable(false);
-            JOptionPane.showMessageDialog(
-                    this,
-                    new JScrollPane(textArea),
-                    "Ticket Issued",
-                    JOptionPane.PLAIN_MESSAGE
-            );
-
-            mainFrame.showHome();
-        }); // This closes the btnPark action listener
-    } // This closes the EntryPanel constructor
-} // This closes the EntryPanel class
-            // Convert spots to "ID (Type)" strings for the pop-up
-            String[] spotStrings = options.stream()
-                    .map(s -> ParkingLot.getInstance().getFormattedSpotName(s))
-                    .toArray(String[]::new);
-
-            // THE SMALL PANEL (Selection Dialog)
-            String selection = (String) JOptionPane.showInputDialog(
-                    this,
-                    "Select a spot for " + plate + ":",
-                    "Spot Assignment",
-                    JOptionPane.PLAIN_MESSAGE,
-                    null,
-                    spotStrings,
-                    spotStrings[0]
-            );
-
-            if (selection != null) {
-                String actualId = selection.split(" ")[0];
-                ParkingSpot spot = ParkingLot.getInstance().findSpotById(actualId);
-                if (spot != null) {
-                    facade.parkVehicle(v, spot, "Hourly");
-                    msgLabel.setText("Parked Successfully at " + actualId);
-                    plateField.setText("");
+                if (ticketResult.startsWith("Error")) {
+                    JOptionPane.showMessageDialog(this, ticketResult, "Entry Error", JOptionPane.ERROR_MESSAGE);
+                } else {
+                    // Success! Show ticket and reset
+                    displayTicket(ticketResult);
+                    resetFields();
+                    mainFrame.showHome();
                 }
             }
         });
     }
 
-private Vehicle createVehicle(String plate) {
-    String type = (String) typeCombo.getSelectedItem(); 
-    boolean isHandi = handicappedCheck.isSelected();
-    Vehicle v;
-
-    // 1. First, determine the base vehicle type
-    if ("Motorcycle".equalsIgnoreCase(type)) {
-        v = new Motorcycle(plate, 0.0);
-    } else if ("SUV/Truck".equalsIgnoreCase(type)) {
-        v = new SUV(plate, 0.0);
-    } else {
-        v = new Car(plate, 0.0); // Default to Car
+    private void resetFields() {
+        plateField.setText("");
+        handicappedCheck.setSelected(false);
+        typeCombo.setSelectedIndex(0);
+        msgLabel.setText("Vehicle parked successfully.");
     }
 
-    // 2. Then, apply the handicapped status if ticked
-    // This allows a Car or Motorcycle to also be "Handicapped"
-    if (isHandi) {
-        v.setHandicappedCardHolder(true);
+    private void displayTicket(String content) {
+        JTextArea textArea = new JTextArea(content);
+        textArea.setEditable(false);
+        textArea.setFont(new Font("Monospaced", Font.PLAIN, 12));
+        JOptionPane.showMessageDialog(this, new JScrollPane(textArea), "Ticket Issued", JOptionPane.PLAIN_MESSAGE);
     }
-    
-    return v;
-}
 }
