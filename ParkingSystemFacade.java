@@ -411,30 +411,30 @@ public int getAvailableSpotsByFloor(int floorNum) {
 }
     
     // --- FINE ANALYTICS REPORT ---
-public List<Object[]> getFineRevenueReport() {
-    List<Object[]> report = new ArrayList<>();
-    // This query calculates how much money was made from fines under each specific rule
-    String sql = "SELECT fineScheme, COUNT(*) as totalFinedVehicles, " +
-                 "SUM(fineAmount) as totalFineRevenue, AVG(fineAmount) as averageFine " +
-                 "FROM ticket WHERE exitTime IS NOT NULL AND fineAmount > 0 " +
-                 "GROUP BY fineScheme";
+public List<Object[]> getGeneralRevenueData() {
+    List<Object[]> data = new ArrayList<>();
+    // This query pulls all completed tickets to show general earnings
+    String sql = "SELECT ticketId, licensePlate, parkingFee, fineAmount, totalPaid, paymentMethod " +
+                 "FROM ticket WHERE exitTime IS NOT NULL";
 
     try (Connection conn = DatabaseConfig.getConnection();
          PreparedStatement ps = conn.prepareStatement(sql);
          ResultSet rs = ps.executeQuery()) {
 
         while (rs.next()) {
-            report.add(new Object[]{
-                rs.getString("fineScheme"),              // "Fixed" or "Hourly"
-                rs.getInt("totalFinedVehicles"),         // Number of cars caught
-                String.format("%.2f", rs.getDouble("totalFineRevenue")), // Total money
-                String.format("%.2f", rs.getDouble("averageFine"))       // Average per car
+            data.add(new Object[]{
+                rs.getString("ticketId"),
+                rs.getString("licensePlate"),
+                String.format("%.2f", rs.getDouble("parkingFee")),
+                String.format("%.2f", rs.getDouble("fineAmount")),
+                String.format("%.2f", rs.getDouble("totalPaid")),
+                rs.getString("paymentMethod")
             });
         }
     } catch (SQLException e) {
         e.printStackTrace();
     }
-    return report;
+    return data;
 }
 
 // --- TOP 5 HIGHEST FINES (The "Violators" List) ---
@@ -654,6 +654,78 @@ public List<Object[]> getPastDebtReport() {
     return hours * 5.0;
 }
     
+        // --- FINE REVENUE ANALYTICS ---
+public List<Object[]> getFineRevenueReport() {
+    List<Object[]> report = new ArrayList<>();
+    
+    // This query groups all completed tickets by the scheme used 
+    // and calculates the count, total revenue, and average fine for each.
+    String sql = "SELECT fineScheme, COUNT(*) as carCount, " +
+                 "SUM(fineAmount) as totalFine, AVG(fineAmount) as avgFine " +
+                 "FROM ticket WHERE fineAmount > 0 AND exitTime IS NOT NULL " +
+                 "GROUP BY fineScheme";
+
+    try (Connection conn = DatabaseConfig.getConnection();
+         PreparedStatement ps = conn.prepareStatement(sql);
+         ResultSet rs = ps.executeQuery()) {
+
+        while (rs.next()) {
+            report.add(new Object[]{
+                rs.getString("fineScheme"),            // Strategy Name
+                rs.getInt("carCount"),                 // Number of vehicles fined
+                String.format("%.2f", rs.getDouble("totalFine")), // Total Revenue
+                String.format("%.2f", rs.getDouble("avgFine"))    // Efficiency (Avg)
+            });
+        }
+    } catch (SQLException e) {
+        System.err.println("Error generating Fine Revenue Report: " + e.getMessage());
+    }
+    return report;
+}
+        
+        public String generateDailyReport() {
+    // Retrieve all completed transactions from the database
+    List<Ticket> completed = repository.getCompletedTickets();
+    
+    double totalRevenue = 0;
+    int totalFinesIssued = 0;
+    double totalFineAmount = 0;
+    int handicappedVehicles = 0;
+
+    for (Ticket t : completed) {
+    totalRevenue += t.getTotalPaid();
+    
+    if (t.getFineAmount() > 0) {
+        totalFinesIssued++;
+        totalFineAmount += t.getFineAmount();
+    }
+    
+    // Check if the vehicle (stored in licensePlate variable) 
+    // is a handicapped card holder
+    if (t.getLicensePlate() != null && t.getLicensePlate().isHandicappedCardHolder()) {
+        handicappedVehicles++;
+    }
+}
+
+    // Build the formatted string for the UI
+    StringBuilder sb = new StringBuilder();
+    sb.append("==========================================\n");
+    sb.append("       PARKING SYSTEM SUMMARY REPORT      \n");
+    sb.append("       Generated: ").append(LocalDateTime.now().toString()).append("\n");
+    sb.append("==========================================\n\n");
+    
+    sb.append(String.format("Total Vehicles Processed:   %d\n", completed.size()));
+    sb.append(String.format("Handicapped Card Holders:   %d\n", handicappedVehicles));
+    sb.append("------------------------------------------\n");
+    sb.append(String.format("Total Revenue Collected:    RM %.2f\n", totalRevenue));
+    sb.append(String.format("Total Fines Included:       RM %.2f\n", totalFineAmount));
+    sb.append(String.format("Total Overstay Violations:  %d\n", totalFinesIssued));
+    sb.append("------------------------------------------\n");
+    sb.append("End of Report\n");
+
+    return sb.toString();
+}
+        
     
     public Ticket parkVehicle(Vehicle v, ParkingSpot spot, String scheme) {
     // 1. Update the physical spot status (makes it occupied in the UI/Dashboard)
@@ -686,4 +758,5 @@ public List<Object[]> getPastDebtReport() {
     return repository.getCompletedTickets(); 
 }
 
+    
 }

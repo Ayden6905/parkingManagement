@@ -18,6 +18,7 @@ public class AdminPanel extends JPanel {
     private MainFrame mainFrame;
     private ParkingSystemFacade facade;
     private JTabbedPane tabbedPane;
+    // These show how many spots are left on each floor
     private JLabel level1Count, level2Count, level3Count, level4Count, level5Count;
     private JLabel lblTotalAvailable;
     private JLabel lblOccupancyRate;
@@ -28,7 +29,7 @@ public class AdminPanel extends JPanel {
 
         setLayout(new BorderLayout());
 
-        // 1. Top Navigation Bar
+        // Top Navigation Bar
         JPanel navBar = new JPanel(new BorderLayout());
         navBar.setBackground(new Color(45, 45, 45));
         JButton btnBack = new JButton("Logout/Back");
@@ -40,28 +41,27 @@ public class AdminPanel extends JPanel {
         navBar.add(lblTitle, BorderLayout.CENTER);
         add(navBar, BorderLayout.NORTH);
 
-        // 2. Create Tabbed Pane
+        // Tab creation "click"
         tabbedPane = new JTabbedPane();
-        
         tabbedPane.addTab("Occupancy Monitoring", createOccupancyPanel());
         tabbedPane.addTab("Revenue Summary", createRevenuePanel());
         tabbedPane.addTab("Fine Overview", createFineOverviewPanel());
 
         add(tabbedPane, BorderLayout.CENTER);
 
-        // Actions
+       //logout
         btnBack.addActionListener(e -> mainFrame.showHome());
     }
 
-    // --- TAB 1: OCCUPANCY MONITORING ---
- private JPanel createOccupancyPanel() {
+    //TAB 1: OCCUPANCY MONITORING
+    private JPanel createOccupancyPanel() {
     JPanel panel = new JPanel(new GridBagLayout());
     panel.setBackground(new Color(240, 240, 240)); 
     GridBagConstraints gbc = new GridBagConstraints();
     gbc.insets = new Insets(10, 10, 10, 10);
     gbc.fill = GridBagConstraints.HORIZONTAL;
 
-    // Initialize labels for counts
+    // Initialize labels for counting
     level1Count = createCountLabel();
     level2Count = createCountLabel();
     level3Count = createCountLabel();
@@ -78,7 +78,7 @@ public class AdminPanel extends JPanel {
     lblOccupancyRate.setBackground(Color.LIGHT_GRAY);
     lblOccupancyRate.setPreferredSize(new Dimension(80, 30));
     
-    // Adding Levels 1-5
+    // Adding Levels 1-5 buttons looping
     for (int i = 1; i <= 5; i++) {
         final int floorNum = i; 
         JButton btnLevel = new JButton("Level " + floorNum);
@@ -98,14 +98,14 @@ public class AdminPanel extends JPanel {
         else if (i == 5) panel.add(level5Count, gbc);
     }
     
-    // Total Available Section
+    // Total Available 
     gbc.gridy = 6;
     gbc.gridx = 0;
     panel.add(new JLabel("Total Available Parking:"), gbc);
     gbc.gridx = 1;
     panel.add(lblTotalAvailable, gbc);
     
-    // NEW: Occupancy Rate Section (GridY 7)
+    // Occupancy Rate 
     gbc.gridy = 7;
     gbc.gridx = 0;
     panel.add(new JLabel("Occupancy Rate:"), gbc);
@@ -115,13 +115,13 @@ public class AdminPanel extends JPanel {
     
     gbc.gridy = 8;
     gbc.gridx = 0;
-    gbc.gridwidth = 2; // Span across both columns
+    gbc.gridwidth = 2; 
     JButton btnRefresh = new JButton("🔄 Refresh Data");
-    btnRefresh.setBackground(new Color(70, 130, 180)); // Steel Blue
+    btnRefresh.setBackground(new Color(70, 130, 180)); //Blue
     btnRefresh.setForeground(Color.WHITE);
     btnRefresh.setFont(new Font("SansSerif", Font.BOLD, 12));
     
-    // Action: Just call the update method
+    //call the update method
     btnRefresh.addActionListener(e -> {
         updateOccupancyDisplay();
         JOptionPane.showMessageDialog(this, "Occupancy Data Updated!");
@@ -144,9 +144,9 @@ private JLabel createCountLabel() {
     return label;
 }
 
+// Pop up a table showing every car on a specific floor
   private void showFloorDetails(int floor) {
-    // This calls the facade to get: SpotID, Type, Status, LicensePlate, EntryTime
-    List<Object[]> floorData = facade.getOccupancyDetailsByFloor(floor);
+   List<Object[]> floorData = facade.getOccupancyDetailsByFloor(floor);
 
     String[] columns = {"Spot ID", "Spot Type", "Status", "Vehicle No", "Entry Time"};
     Object[][] data = new Object[floorData.size()][5];
@@ -163,7 +163,7 @@ private JLabel createCountLabel() {
 }
   
   
-   // --- TAB 2: REVENUE SUMMARY ---
+//TAB 2: REVENUE
 private JPanel createRevenuePanel() {
     JPanel panel = new JPanel(new GridBagLayout());
     panel.setBackground(new Color(245, 245, 245));
@@ -171,73 +171,142 @@ private JPanel createRevenuePanel() {
     gbc.insets = new Insets(15, 15, 15, 15);
     gbc.fill = GridBagConstraints.HORIZONTAL;
 
-    // 1. General Revenue Button
-    JButton btnGeneralReport = new JButton("📊 View General Revenue Report");
-    btnGeneralReport.setFont(new Font("SansSerif", Font.BOLD, 13));
-    btnGeneralReport.addActionListener(e -> showRevenueReport());
+    //General Revenue Button
+    JButton btnRevenueReport = new JButton("📊 View General Revenue Report");
+    btnRevenueReport.setFont(new Font("SansSerif", Font.BOLD, 13));
+    btnRevenueReport.addActionListener(e -> {
+    // fetch data from facade
+    List<Object[]> rawData = facade.getGeneralRevenueData();
+    String[] genCols = {"Ticket ID", "Plate", "Fee (RM)", "Fine (RM)", "Total (RM)", "Method"};
+    
+    // calc the Grand Total
+    double grandTotal = 0;
+    for (Object[] row : rawData) {
+        try {
+            // Row index 4 corresponds to "Total (RM)" 
+            grandTotal += Double.parseDouble(row[4].toString());
+        } catch (NumberFormatException nfe) {
+            System.err.println("Error parsing revenue value: " + nfe.getMessage());
+        }
+    }
+
+    // Setup the Table
+    DefaultTableModel model = getTableModel(rawData, genCols);
+    JTable genTable = new JTable(model);
+    
+    // UI Layout (Center: Table, South: Total Sum)
+    JPanel mainReportPanel = new JPanel(new BorderLayout());
+    mainReportPanel.add(new JScrollPane(genTable), BorderLayout.CENTER);
+    
+    JLabel lblSum = new JLabel("GRAND TOTAL REVENUE: RM " + String.format("%.2f", grandTotal));
+    lblSum.setFont(new Font("SansSerif", Font.BOLD, 15));
+    lblSum.setForeground(new Color(0, 102, 51)); // Dark Green for money
+    lblSum.setBorder(BorderFactory.createEmptyBorder(15, 10, 15, 10));
+    lblSum.setHorizontalAlignment(SwingConstants.RIGHT);
+    mainReportPanel.add(lblSum, BorderLayout.SOUTH);
+
+    // 5. Display in a Dialog
+    JDialog reportDialog = new JDialog();
+    reportDialog.setTitle("General Revenue Report");
+    reportDialog.add(mainReportPanel);
+    reportDialog.setSize(750, 450);
+    reportDialog.setLocationRelativeTo(this);
+    reportDialog.setVisible(true);
+});
 
     // 2. Fine Analysis Button
     JButton btnFineReport = new JButton("💸 View Fine Strategy Analysis");
     btnFineReport.setFont(new Font("SansSerif", Font.BOLD, 13));
     btnFineReport.addActionListener(e -> showFineStrategyReport());
 
+    // 3. System Summary Report Button
+    JButton btnSummaryReport = new JButton("📋 Generate System Summary");
+    btnSummaryReport.setFont(new Font("SansSerif", Font.BOLD, 13));
+    btnSummaryReport.addActionListener(e -> {
+        String reportData = facade.generateDailyReport();
+        JTextArea textArea = new JTextArea(reportData);
+        textArea.setEditable(false);
+        textArea.setFont(new Font("Monospaced", Font.PLAIN, 12));
+        JScrollPane scroll = new JScrollPane(textArea);
+        scroll.setPreferredSize(new Dimension(450, 350));
+        JOptionPane.showMessageDialog(this, scroll, "Daily Summary Report", JOptionPane.PLAIN_MESSAGE);
+    });
+    
+    // Add buttons to panel using corrected variable names
     gbc.gridy = 0;
-    panel.add(btnGeneralReport, gbc);
+    panel.add(btnRevenueReport, gbc); 
     
     gbc.gridy = 1;
     panel.add(btnFineReport, gbc);
 
+    gbc.gridy = 2;
+    panel.add(btnSummaryReport, gbc);
+
     return panel;
 }
 
-private void showFineStrategyReport() {
-    // 1. Get Data from Facade
-    List<Object[]> fineStats = facade.getFineRevenueReport();
-    List<Object[]> topViolators = facade.getTopFineViolators();
+private DefaultTableModel getTableModel(List<Object[]> data, String[] cols) {
+    Object[][] dataArray = data.toArray(new Object[0][]);
+    return new DefaultTableModel(dataArray, cols) {
+        @Override
+        public boolean isCellEditable(int row, int column) {
+            return false; // Prevent admin from editing financial records directly in the UI
+        }
+    };
+}
 
-    if (fineStats.isEmpty()) {
-        JOptionPane.showMessageDialog(this, "No fine records found yet.");
+private void showFineStrategyReport() {
+    List<Object[]> fineStats = facade.getFineRevenueReport();
+
+    if (fineStats == null || fineStats.isEmpty()) {
+        JOptionPane.showMessageDialog(this, "No fine revenue recorded yet.");
         return;
     }
 
-    // 2. Setup the Strategy Breakdown Table
-    String[] statCols = {"Fine Scheme", "Vehicles Fined", "Total Fine Revenue (RM)", "Avg. Fine (RM)"};
-    DefaultTableModel statModel = new DefaultTableModel(statCols, 0);
-    for (Object[] row : fineStats) statModel.addRow(row);
+    //Columns and Table 
+    String[] statCols = {"Applied Strategy", "Fined Vehicles", "Fine Revenue (RM)", "Avg. Fine/Car"};
+    DefaultTableModel statModel = new DefaultTableModel(statCols, 0) {
+        @Override
+        public boolean isCellEditable(int r, int c) { return false; }
+    };
+    
+    double totalFineSum = 0;
+    for (Object[] row : fineStats) {
+        statModel.addRow(row);
+        // I=2 is "Total Fine Revenue (RM)" as a String from Facade
+        totalFineSum += Double.parseDouble(row[2].toString());
+    }
+    
     JTable statTable = new JTable(statModel);
+    statTable.setRowHeight(30);
 
-    // 3. Setup the Top Violators Table
-    String[] violatorCols = {"Plate Number", "Scheme Used", "Total Duration", "Fine Amount (RM)"};
-    DefaultTableModel violatorModel = new DefaultTableModel(violatorCols, 0);
-    for (Object[] row : topViolators) violatorModel.addRow(row);
-    JTable violatorTable = new JTable(violatorModel);
-
-    // 4. NEW: Strategy Legend (Explaining Progressive vs Others)
-    JPanel legendPanel = new JPanel(new GridLayout(3, 1));
-    legendPanel.setBorder(BorderFactory.createTitledBorder("Strategy Logic Applied:"));
-    legendPanel.add(new JLabel(" • Fixed: Flat RM 50.00"));
-    legendPanel.add(new JLabel(" • Hourly: RM 10.00 per hour overstayed"));
-    legendPanel.add(new JLabel(" • Progressive: RM 10 (1st hr) -> RM 20 (2nd hr) -> RM 40 (3rd hr+)"));
-
-    // 5. Layout for the Popup
-    JPanel container = new JPanel();
-    container.setLayout(new BoxLayout(container, BoxLayout.Y_AXIS));
+    //Layout (Table:Center, Grand Total:South)
+    JPanel container = new JPanel(new BorderLayout(10, 10));
+    container.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
     
-    // Add sections with padding
-    container.add(new JLabel("💰 REVENUE BY FINE STRATEGY"));
-    container.add(new JScrollPane(statTable));
-    container.add(Box.createRigidArea(new Dimension(0, 15)));
+    JLabel header = new JLabel("💸 FINE REVENUE BREAKDOWN", SwingConstants.CENTER);
+    header.setFont(new Font("SansSerif", Font.BOLD, 16));
+    container.add(header, BorderLayout.NORTH);
     
-    container.add(new JLabel("🚩 TOP 5 HIGHEST FINES ISSUED"));
-    container.add(new JScrollPane(violatorTable));
-    container.add(Box.createRigidArea(new Dimension(0, 15)));
+    container.add(new JScrollPane(statTable), BorderLayout.CENTER);
     
-    container.add(legendPanel);
+    // Summary Label for the Footer
+    JLabel lblTotalFines = new JLabel("TOTAL FINES COLLECTED: RM " + String.format("%.2f", totalFineSum));
+    lblTotalFines.setFont(new Font("SansSerif", Font.BOLD, 14));
+    lblTotalFines.setForeground(new Color(204, 0, 0)); // Red 
+    lblTotalFines.setHorizontalAlignment(SwingConstants.RIGHT);
+    lblTotalFines.setBorder(BorderFactory.createEmptyBorder(10, 0, 0, 0));
+    
+    container.add(lblTotalFines, BorderLayout.SOUTH);
 
-    container.setPreferredSize(new Dimension(650, 550));
-    JOptionPane.showMessageDialog(this, container, "Fine Strategy Analytics", JOptionPane.PLAIN_MESSAGE);
+    // Display Dialog
+    JDialog fineDialog = new JDialog();
+    fineDialog.setTitle("Specific Fine Revenue Report");
+    fineDialog.add(container);
+    fineDialog.setSize(600, 400);
+    fineDialog.setLocationRelativeTo(this);
+    fineDialog.setVisible(true);
 }
-
 
     // --- TAB 4: FINE OVERVIEW & CONFIG ---
 private JPanel createFineOverviewPanel() {

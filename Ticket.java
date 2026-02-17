@@ -221,5 +221,6 @@ public class Ticket {
     public double getFineAmount() { return fineAmount; }
     public double getTotalPaid() { return totalPaid; }
     public String getPaymentMethod() { return paymentMethod; }
+    
 }
 
