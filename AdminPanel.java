@@ -257,7 +257,8 @@ private JPanel createFineOverviewPanel() {
     schemeCombo.setSelectedItem(facade.getCurrentFineScheme());
     JButton btnUpdate = new JButton("Apply Scheme");
     JButton btnRefresh = new JButton("Refresh All Tables");
-
+ 
+    
     configRow.add(new JLabel("Active Strategy: "));
     configRow.add(schemeCombo);
     configRow.add(btnUpdate);
@@ -302,6 +303,7 @@ private JPanel createFineOverviewPanel() {
         }        
     });
 
+    
     btnRefresh.addActionListener(e -> {
     // Force the refresh
     refreshBothTables(activeModel, debtModel);

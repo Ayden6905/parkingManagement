@@ -110,83 +110,87 @@ public class EntryPanel extends JPanel {
                         JOptionPane.YES_NO_OPTION,
                         JOptionPane.WARNING_MESSAGE
                 );
-
                 if (choice != JOptionPane.YES_OPTION) return;
-
                 lblDebtWarning.setText("⚠️ UNPAID FINES: RM " + String.format("%.2f", existingDebt));
             } else {
                 lblDebtWarning.setText("");
             }
 
-            // --- Get spot IDs from FACADE (this is the single source of truth) ---
-            // 1) Get spot IDs from facade
-            List<String> spotIds = facade.getAvailableSpotsFor(plate, type, isCardHolder);
+            String selectedSpotId = null;
 
-            if (spotIds == null || spotIds.isEmpty()) {
-                JOptionPane.showMessageDialog(this, "No available spots.");
-                return;
-            }
+            // --- Step 1: Check for Reservations ---
+            List<String> reservedIds = facade.getReservedSpotsForPlate(plate); 
 
-            // 2) Convert IDs: ParkingSpot objects (so "(RESERVED)" shows)
-            List<ParkingSpot> spotObjects = new ArrayList<>();
-            for (String id : spotIds) {
-                ParkingSpot ps = ParkingLot.getInstance().findSpotById(id);
-                if (ps != null && ps.isAvailable()) {
-                    spotObjects.add(ps);
+            if (reservedIds != null && !reservedIds.isEmpty()) {
+                selectedSpotId = (String) JOptionPane.showInputDialog(
+                        this,
+                        "You have an active reservation.\nSelect your reserved spot:",
+                        "Reserved Spot",
+                        JOptionPane.PLAIN_MESSAGE,
+                        null,
+                        reservedIds.toArray(new String[0]),
+                        reservedIds.get(0)
+                );
+                if (selectedSpotId == null) return;
+            } 
+            // --- Step 2: If no reservation, find normal spots ---
+            else {
+                List<String> spotIds = facade.getAvailableSpotsFor(plate, type, isCardHolder);
+
+                if (spotIds == null || spotIds.isEmpty()) {
+                    JOptionPane.showMessageDialog(this, "No available spots.");
+                    return;
                 }
+
+                List<ParkingSpot> spotObjects = new ArrayList<>();
+                for (String id : spotIds) {
+                    ParkingSpot ps = ParkingLot.getInstance().findSpotById(id);
+                    if (ps != null && ps.isAvailable()) {
+                        spotObjects.add(ps);
+                    }
+                }
+
+                if (spotObjects.isEmpty()) {
+                    JOptionPane.showMessageDialog(this, "No available spots.");
+                    return;
+                }
+
+                ParkingSpot selected = (ParkingSpot) JOptionPane.showInputDialog(
+                        this,
+                        "Select Available Spot:",
+                        "Choose Spot",
+                        JOptionPane.PLAIN_MESSAGE,
+                        null,
+                        spotObjects.toArray(new ParkingSpot[0]),
+                        spotObjects.get(0)
+                );
+
+                if (selected == null) return;
+                selectedSpotId = selected.getSpotId();
             }
 
-            if (spotObjects.isEmpty()) {
-                JOptionPane.showMessageDialog(this, "No available spots.");
-                return;
-            }
-
-            // 3) Show dropdown using ParkingSpot objects
-            ParkingSpot selected = (ParkingSpot) JOptionPane.showInputDialog(
-                    this,
-                    "Select Available Spot:",
-                    "Choose Spot",
-                    JOptionPane.PLAIN_MESSAGE,
-                    null,
-                    spotObjects.toArray(new ParkingSpot[0]),
-                    spotObjects.get(0)
-            );
-
-            if (selected == null) {
-                return;
-            }
-
-            // 4) Extract selected spot ID
-            String selectedSpotId = selected.getSpotId();
-
-            // --- Ticket issuance ---
+            // --- Step 3: Ticket issuance (Line 206 fix) ---
+            // We use 'selectedSpotId' which works for BOTH reserved and normal cars
             String ticketResult = facade.handleVehicleEntry(plate, type, selectedSpotId, isCardHolder);
 
             if (ticketResult == null || ticketResult.startsWith("Error")) {
-                JOptionPane.showMessageDialog(
-                        this,
+                JOptionPane.showMessageDialog(this,
                         ticketResult == null ? "Unknown error." : ticketResult,
                         "Entry Error",
-                        JOptionPane.ERROR_MESSAGE
-                );
+                        JOptionPane.ERROR_MESSAGE);
                 return;
             }
-
-            // Reset UI
+            
+            // Success cleanup
             plateField.setText("");
             handicappedCheck.setSelected(false);
 
             JTextArea textArea = new JTextArea(ticketResult);
             textArea.setEditable(false);
-            JOptionPane.showMessageDialog(
-                    this,
-                    new JScrollPane(textArea),
-                    "Ticket Issued",
-                    JOptionPane.PLAIN_MESSAGE
-            );
+            JOptionPane.showMessageDialog(this, new JScrollPane(textArea), "Ticket Issued", JOptionPane.PLAIN_MESSAGE);
 
             mainFrame.showHome();
-        });
+        });//  Close the ActionListener correctly
     }
 
     // Build the correct Vehicle object for ParkingLot filtering

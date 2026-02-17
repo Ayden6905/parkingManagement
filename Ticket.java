@@ -193,6 +193,20 @@ public class Ticket {
     public double getCarriedOverFine() {
         return carriedOverFine;
     }
+    
+        public void updateFineAmountInDb() {
+        String sql = "UPDATE ticket SET fineAmount = ? WHERE ticketId = ?";
+
+        try (Connection conn = DatabaseConfig.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setDouble(1, this.fineAmount);
+            ps.setString(2, this.ticketId);
+            ps.executeUpdate();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 
     // --- GETTER FOR SCHEME ---
     public String getFineScheme() { return fineScheme; }
