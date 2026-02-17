@@ -196,7 +196,38 @@ public double checkExistingDebt(String plate) {
         return "Fixed"; 
     }
 
+    //parking summary
+    public ParkingSummary getParkingSummary(String plate) {
+    Ticket ticket = Ticket.findActiveByPlate(plate);
+    if (ticket == null) return null;
+
+    // Calc duration
+    int duration = ticket.calculateDurationHours();
     
+    //Use the "historical" scheme applied when the car entered
+    fineManager.setStrategy(ticket.getFineScheme());
+    double currentFine = fineManager.calculateFine(duration);
+    
+    //  Fetch the debt that was carried over into this ticket
+    double carriedOverFine = ticket.getCarriedOverFine(); 
+    
+    // Calc total fee
+     double parkingFee = calculateParkingFee(ticket.getLicensePlate(), ticket.getSpotId(), duration);
+     double historicalDebt = ticket.getCarriedOverFine();
+    
+
+    return new ParkingSummary(
+            ticket.getTicketId(),
+            plate,
+            ticket.getEntryTime(),
+            LocalDateTime.now(),
+            duration,
+            parkingFee,
+            currentFine + historicalDebt,
+             parkingFee + currentFine + historicalDebt
+    );
+}
+
     //available spots
     public List<String> getAvailableSpotsFor(String plate, String vehicleType, boolean cardHolder) {
 
@@ -265,7 +296,11 @@ public List<String> getReservedSpotsForPlate(String plate) {
 }
     
  
-   
+public int getAvailableSpotsByFloor(int floorNum) {
+    ParkingRepository repo = new ParkingRepository();
+    return repo.getAvailableCountByFloor(floorNum);
+}
+    
     public List<Object[]> getOccupancyDetailsByFloor(int floor) {
     List<Object[]> details = new ArrayList<>();
     String sql = "SELECT p.spotId, p.spotType, p.status, " +
@@ -453,6 +488,9 @@ public List<Object[]> getFineRevenueReport() {
     }
     return report;
 }
+
+
+    
     
     public List<Ticket> getRevenueReport() {
     return repository.getCompletedTickets(); 
