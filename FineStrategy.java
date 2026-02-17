@@ -8,6 +8,6 @@ package com.mycompany.parkingmanagement;
  * @author ayden
  */
 public interface FineStrategy {
-    // Calculates fine based on TOTAL hours parked
+    // Calc fine based on TOTAL hours parked
     double calculateFine(long totalHours);
 }

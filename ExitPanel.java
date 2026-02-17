@@ -9,7 +9,6 @@ package com.mycompany.parkingmanagement;
  */
 import javax.swing.*;
 import java.awt.*;
-import java.time.format.DateTimeFormatter;
 
 public class ExitPanel extends JPanel {
     private MainFrame mainFrame;
@@ -17,7 +16,7 @@ public class ExitPanel extends JPanel {
     private CardLayout innerLayout = new CardLayout();
     private JPanel container = new JPanel(innerLayout);
     
-    //temp storage
+   
     private ParkingSummary currentSummary;
     
     public ExitPanel(ParkingSystemFacade facade, MainFrame mainFrame) {
@@ -98,10 +97,9 @@ public class ExitPanel extends JPanel {
             String method = options[methodIdx];
             String plate = currentSummary.getPlate();
             
-            // 1. Calculate the TOTAL amount that was supposed to be paid (Parking + ALL Fines)
+            // Calc total amount that was supposed to be paid (Parking + ALL Fines)
         double totalDueIncludingFines = currentSummary.getParkingFee() + currentSummary.getFineAmount();
 
-// Task: Execute payment logic and persist to DB
              Receipt receipt = facade.processPayment(currentSummary.getPlate(), finePaid, method);
             facade.finalizeExit(plate, total, totalDueIncludingFines);
             showReceipt(receipt);
@@ -130,8 +128,7 @@ public class ExitPanel extends JPanel {
         currentSummary = null;
         container.removeAll();
         
-        //to recreate search panel jadi default view
-        container.add(createSearchPanel(), "Search");
+         container.add(createSearchPanel(), "Search");
         innerLayout.show(container, "Search");
         revalidate();
         repaint();

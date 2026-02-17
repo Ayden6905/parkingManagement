@@ -35,7 +35,6 @@ public class Ticket {
         this.fineScheme = fineScheme;
         this.carriedOverFine = carriedOverFine;
         
-        //default value used for entry ticket
         this.exitTime = null;
         this.parkingFee = 0.0;
         this.fineAmount = 0.0;
@@ -61,7 +60,6 @@ public class Ticket {
     
     public void saveEntry() {
     String sqlVehicle = "INSERT IGNORE INTO vehicle (licensePlate, vehicleType) VALUES (?, ?)";
-    // 1. ADDED carriedOverFine to the column list and a 6th '?' placeholder
     String sqlTicket = "INSERT INTO ticket (ticketId, licensePlate, spotId, entryTime, fineScheme, carriedOverFine) VALUES (?, ?, ?, ?, ?, ?)";
     String updateSpot = "UPDATE parkingSpot SET status='Occupied' WHERE spotId=?";
 
@@ -88,7 +86,6 @@ public class Ticket {
             psTicket.setTimestamp(4, Timestamp.valueOf(entryTime));
             psTicket.setString(5, fineScheme);
             
-            // 2. ADDED this line to save the debt into the ticket record
             psTicket.setDouble(6, this.carriedOverFine); 
             
             psTicket.executeUpdate();
@@ -129,7 +126,10 @@ public class Ticket {
     }
     
     public ParkingSpot getSpot() {
-    return this.spotId; // Changed from .spot to .spotId
+    return this.spotId; 
+}
+    public boolean isHandicapped() {
+    return (licensePlate != null) && licensePlate.isHandicappedCardHolder();
 }
     
     public String generateFormattedTicket() {
@@ -149,10 +149,9 @@ public class Ticket {
                 + "==========================================";
     }
     
-    // --- UPDATED FIND ACTIVE TICKET ---
+    // UPDATED FIND ACTIVE TICKET 
    public static Ticket findActiveByPlate(String plate) {
-    // 1. Added vehicleType to the SELECT so we can tell the Factory what to create
-        String sql = "SELECT t.ticketId, t.licensePlate, t.spotId, t.entryTime, t.fineScheme, t.carriedOverFine, v.vehicleType "
+            String sql = "SELECT t.ticketId, t.licensePlate, t.spotId, t.entryTime, t.fineScheme, t.carriedOverFine, v.vehicleType "
                    + "FROM ticket t "
                    + "JOIN vehicle v ON t.licensePlate = v.licensePlate "
                    + "WHERE t.licensePlate=? AND t.exitTime IS NULL";
@@ -164,14 +163,13 @@ public class Ticket {
 
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    String type = rs.getString("vehicleType"); // Fixed variable name
+                    String type = rs.getString("vehicleType");
                     double debt = rs.getDouble("carriedOverFine");
 
-                    // Use the active VehicleFactory
+                    // Use active VehicleFactory
                     VehicleFactory factory = new VehicleFactory();
                     Vehicle v = factory.createVehicle(type, plate, debt);
                     
-                    // Note: You may want to fetch the actual spot type from DB instead of defaulting to RegularSpot
                     ParkingSpot s = new RegularSpot(rs.getString("spotId"), 1); 
 
                     return new Ticket(
@@ -208,9 +206,8 @@ public class Ticket {
         }
     }
 
-    // --- GETTER FOR SCHEME ---
+    // getter
     public String getFineScheme() { return fineScheme; }
-    
     public String getTicketId() { return ticketId; }
     public Vehicle getLicensePlate() { return licensePlate; }
     public ParkingSpot getSpotId() { return spotId; }

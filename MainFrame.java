@@ -26,17 +26,16 @@ public class MainFrame extends JFrame {
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
 
-        // 1. Create the Main Menu (the screen in your image)
+        // Main Menu 
         JPanel homePanel = createHomePanel();
         
         entryPanel = new EntryPanel(facade, this);
         exitPanel = new ExitPanel(facade, this);
         
-        // 2. Add screens to the container
+        // Add screens to the container
         mainContainer.add(homePanel, "Home");
         mainContainer.add(new EntryPanel(facade, this), "Entry"); // Member 4 task
         mainContainer.add(new ExitPanel(facade, this), "Exit");
-        // mainContainer.add(new ExitPanel(facade, this), "Exit"); 
         // Change "Admin" to "AdminDashboard"
         mainContainer.add(new AdminPanel(facade, this), "AdminDashboard");
         mainContainer.add(new AdminLogin(facade, this), "AdminLogin");
@@ -57,7 +56,7 @@ public class MainFrame extends JFrame {
         gbc.gridy = 0; 
         panel.add(title, gbc);
 
-        // Buttons based on your image
+        // Buttons based on image
         JButton btnEntry = createMenuButton("Entry System");
         JButton btnAdmin = createMenuButton("Admin Login");
         JButton btnExit = createMenuButton("Exit System");
@@ -90,11 +89,10 @@ public class MainFrame extends JFrame {
         cardLayout.show(mainContainer, "Home");
     }
     
-    // Add this inside your MainFrame class
     public void showPanel(String panelName) {
     cardLayout.show(mainContainer, panelName);
     
-    // If we are moving to the Admin Dashboard, make sure the data is fresh!
+   //Fresh Data
     if (panelName.equals("AdminDashboard")) {
         // You'll need to keep a reference to your adminPanel to call a refresh method
     }

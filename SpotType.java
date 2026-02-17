@@ -8,7 +8,6 @@ package com.mycompany.parkingmanagement;
  *
  * @author ayden
  */
-// for type of spot
 public enum SpotType {
     COMPACT,
     REGULAR,

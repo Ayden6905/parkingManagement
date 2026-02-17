@@ -28,6 +28,6 @@ public class VehicleFactory {
                 v = new Car(plate, debt);
                 break;
         }
-        return v; // MUST have this line!
+        return v;
     }
 }

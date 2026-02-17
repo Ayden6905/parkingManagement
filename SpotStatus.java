@@ -8,7 +8,6 @@ package com.mycompany.parkingmanagement;
  *
  * @author ayden
  */
-// for spot availability
 public enum SpotStatus {
     AVAILABLE,
     OCCUPIED

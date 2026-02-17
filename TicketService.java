@@ -22,41 +22,36 @@ public class TicketService {
         this.vehicleFactory = new VehicleFactory();
     }
 
-    /**
-     * MAIN CREATE TICKET METHOD
-     * This version supports the Debt Check for ZXC 123
-     */
     public String createTicket(String plate, String vehicleType, String spotId, boolean isHandicapped, String scheme, double carriedOverFine) {
-        // 1. Create the vehicle object
+        //Create vehicle object
         Vehicle vehicle = vehicleFactory.createVehicle(vehicleType, plate);
         vehicle.setHandicappedCardHolder(isHandicapped);
         
-        // 2. Find the parking spot
+        //Find the parking spot
         ParkingSpot spot = ParkingLot.getInstance().findSpotById(spotId);
         if (spot == null) {
             throw new RuntimeException("Spot not found in system: " + spotId);
         }
 
-        // 3. Generate a unique Ticket ID
+        //Generate unique Ticket ID
         String ticketId = "T-" + plate + "-" + System.currentTimeMillis();
 
-        // 4. Instantiate Ticket with debt tracking
+        //Instantiate Ticket with debt tracking
         Ticket ticket = new Ticket(ticketId, vehicle, spot, LocalDateTime.now(), scheme, carriedOverFine);
 
-        // 5. LOCK spot in DB first (prevents 2 cars taking same spot)
+        //LOCK spot in DB (prevents 2 cars taking same spot)
         ParkingRepository repo = new ParkingRepository();
         boolean ok = repo.occupySpot(spotId);
         if (!ok) {
             throw new RuntimeException("Spot already taken. Please choose another spot.");
         }
 
-        // 6. Now save ticket
+        //save ticket
         ticket.saveEntry();
 
         return ticketId;
     }
 
-    // Overloaded version for standard entry if needed
     public String createTicket(String plate, String vehicleType, String spotId, boolean isHandicappedCardHolder) {
         return createTicket(plate, vehicleType, spotId, isHandicappedCardHolder, "Fixed", 0.0);
     }
@@ -70,7 +65,6 @@ public class TicketService {
             ps.setString(2, plate);
             ps.executeUpdate();
 
-            // Also free the spot
             Ticket t = Ticket.findActiveByPlate(plate);
             if (t != null) {
                 freeParkingSpot(t.getSpotId().getSpotId());

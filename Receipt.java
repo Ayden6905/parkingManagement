@@ -111,4 +111,3 @@ public class Receipt {
     public String getPaymentMethod() { return paymentMethod; }
     public LocalDateTime getIssuedTime() { return issuedTime; }
 }
-

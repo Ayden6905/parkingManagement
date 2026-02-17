@@ -58,9 +58,9 @@ public class FineManager {
         }
         return 0.0;
     }
-    
+    //Saves a fine to the user's account if they don't pay immediately at exit
     public void postponeFineToAccount(String plate, double amount) {
-    // This query creates the row if missing OR adds to the balance if it exists
+    // inserts a new row or adds the amount to the existing balance.
     String sql = "INSERT INTO vehicle (licensePlate, vehicleType, outstandingFines) " +
                  "VALUES (?, 'Car', ?) " +
                  "ON DUPLICATE KEY UPDATE outstandingFines = outstandingFines + ?";

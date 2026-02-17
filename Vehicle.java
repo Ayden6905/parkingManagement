@@ -57,7 +57,6 @@ public abstract class Vehicle {
         this.exitTime = exitTime;
     }
 
-    // This is used by the Facade to update the object before saving to DB
     public void setOutstandingFines(double amount) {
         this.outstandingFines = amount;
     }
@@ -68,7 +67,6 @@ public abstract class Vehicle {
         }
     }        
     
-    //newly added
     public boolean isHandicappedCardHolder()
     {
         return handicappedCardHolder;

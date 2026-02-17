@@ -11,11 +11,9 @@ import java.sql.*;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.*;
 
 public class ParkingRepository {
 
-    // 1. Matches vehicle type to allowed spot types
     public String findAvailableSpot(VehicleType type) throws SQLException {
         
         String allowedTypes;
@@ -32,14 +30,12 @@ public class ParkingRepository {
                 allowedTypes = "'Regular'";
                 break;
             case HANDICAPPED:
-                // Handicapped vehicles can park in ANY spot type
                 allowedTypes = "'Compact', 'Regular', 'Handicapped', 'Reserved'";
                 break;
             default:
                 return null;
         }
 
-        // String.format to build the query safely
         String sql = "SELECT spotId FROM parkingSpot " +
                      "WHERE status = 'Available' AND spotType IN (" + allowedTypes + ") " +
                      "LIMIT 1";
@@ -52,10 +48,10 @@ public class ParkingRepository {
                 return rs.getString("spotId");
             }
         }
-        return null; // No spots found
+        return null; 
     }
 
-    // 2. Updates spot status AND creates a ticket (atomic + prevents double booking)
+    //Updates spot status AND creates a ticket 
     public boolean parkVehicle(Vehicle vehicle, String spotId) {
 
         String updateSpotSql
@@ -69,7 +65,7 @@ public class ParkingRepository {
 
         try {
             conn = DatabaseConfig.getConnection();
-            conn.setAutoCommit(false); // START TRANSACTION
+            conn.setAutoCommit(false); 
 
             // Step A: Mark spot as Occupied ONLY if still Available
             int updated;
@@ -78,7 +74,7 @@ public class ParkingRepository {
                 updated = updateStmt.executeUpdate();
             }
 
-            // If no row updated, spot was not available (already taken)
+            // If no row updated, spot not available (already taken)
             if (updated == 0) {
                 conn.rollback();
                 return false;
@@ -189,7 +185,6 @@ public class ParkingRepository {
         }
     }
     
-    // Add this to ParkingRepository.java
 public boolean releaseSpot(String spotId) {
     String sql = "UPDATE parkingSpot SET status = 'Available' WHERE spotId = ?";
     
@@ -205,9 +200,7 @@ public boolean releaseSpot(String spotId) {
     }
 } 
 
-// Add this to ParkingRepository.java
 public int getAvailableCountByFloor(int floorNum) {
-    // This query links reservations specifically to the floor of the spot
     String sql = "SELECT COUNT(*) FROM parkingSpot p " +
                  "WHERE p.floorNumber = ? " +
                  "AND p.spotId NOT IN (SELECT t.spotId FROM ticket t WHERE t.exitTime IS NULL) " +
@@ -219,7 +212,7 @@ public int getAvailableCountByFloor(int floorNum) {
          PreparedStatement ps = conn.prepareStatement(sql)) {
         
         ps.setInt(1, floorNum);
-        ps.setInt(2, floorNum); // Bind floorNum twice to satisfy both '?'
+        ps.setInt(2, floorNum); 
         
         try (ResultSet rs = ps.executeQuery()) {
             if (rs.next()) {
@@ -284,7 +277,7 @@ public List<Object[]> getOccupancyDetailsByFloor(int floor) {
                 + "FROM reservation "
                 + "WHERE UPPER(TRIM(plate)) = ? "
                 + "  AND UPPER(status) = 'ACTIVE' "
-                + "  AND NOW() <= endTime";   // ✅ still valid, not expired
+                + "  AND NOW() <= endTime";   
 
         try (Connection conn = DatabaseConfig.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
 
@@ -318,11 +311,11 @@ public List<Object[]> getOccupancyDetailsByFloor(int floor) {
     public List<String> getSelectableSpotIds(String plate, String vehicleType, boolean isCardHolder) {
         List<String> ids = new ArrayList<>();
 
-        // 1) Check if plate has an active reservation (DB)
+        // 1) Check plate has an active reservation
         List<String> reservedIds = getReservedSelectableSpotIds(plate);
         boolean hasReservation = !reservedIds.isEmpty();
 
-        // 2) Only fetch AVAILABLE spots from DB
+        // 2) fetch AVAILABLE spots from DB
         String sql = "SELECT spotId, spotType FROM parkingSpot WHERE status = 'Available'";
 
         try (Connection conn = DatabaseConfig.getConnection(); PreparedStatement ps = conn.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
@@ -335,9 +328,9 @@ public List<Object[]> getOccupancyDetailsByFloor(int floor) {
                 String spotId = rs.getString("spotId");
                 String spotType = rs.getString("spotType");
 
-                // --- Reserved rule ---
+                //Reserved rule
                 if ("Reserved".equalsIgnoreCase(spotType) || "RESERVED".equalsIgnoreCase(spotType)) {
-                    // Only show reserved if this plate reserved it AND within valid time
+                    // show reserved if this plate reserved it AND within valid time
                     if (!reservedIds.contains(spotId)) {
                         continue;
                     }
@@ -364,7 +357,6 @@ public List<Object[]> getOccupancyDetailsByFloor(int floor) {
         String vt = vehicleType.toUpperCase();
         String st = spotType.toUpperCase();
 
-        // handicapped driver can park anywhere
         if (isCardHolder || vt.equals("HANDICAPPED")) {
             return true;
         }
@@ -403,7 +395,7 @@ public List<Object[]> getOccupancyDetailsByFloor(int floor) {
                 + "WHERE UPPER(TRIM(plate)) = ? "
                 + "  AND spotId = ? "
                 + "  AND UPPER(status) = 'ACTIVE' "
-                + "  AND NOW() <= endTime"; // valid until expiry (your chosen rule)
+                + "  AND NOW() <= endTime";
 
         try (Connection conn = DatabaseConfig.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
 
@@ -423,7 +415,6 @@ public List<Object[]> getOccupancyDetailsByFloor(int floor) {
     
     public List<Ticket> getCompletedTickets() {
     List<Ticket> list = new ArrayList<>();
-    // We join with vehicle to get the type so we can recreate the Vehicle object correctly
     String sql = "SELECT t.*, v.vehicleType FROM ticket t " +
                  "JOIN vehicle v ON t.licensePlate = v.licensePlate " +
                  "WHERE t.exitTime IS NOT NULL";
@@ -435,16 +426,15 @@ public List<Object[]> getOccupancyDetailsByFloor(int floor) {
         VehicleFactory factory = new VehicleFactory();
 
         while (rs.next()) {
-            // 1. Recreate the Vehicle object
+            //Recreate Vehicle object
             String plate = rs.getString("licensePlate");
             String type = rs.getString("vehicleType");
             double debt = rs.getDouble("carriedOverFine");
             Vehicle v = factory.createVehicle(type, plate, debt);
 
-            // 2. Recreate a Spot object (Defaulting to Regular for report purposes)
+            //Recreate Spot object 
             ParkingSpot s = new RegularSpot(rs.getString("spotId"), 1);
 
-            // 3. Call your 6-parameter constructor
             Ticket t = new Ticket(
                 rs.getString("ticketId"),
                 v,
@@ -454,8 +444,6 @@ public List<Object[]> getOccupancyDetailsByFloor(int floor) {
                 debt
             );
 
-            // 4. Update the 'closed' fields using your closeTicket-style logic
-            // Since we can't call closeTicket (it writes to DB), we use a helper or setters
             t.closeTicket(
                 rs.getTimestamp("exitTime").toLocalDateTime(),
                 rs.getDouble("parkingFee"),
@@ -471,6 +459,6 @@ public List<Object[]> getOccupancyDetailsByFloor(int floor) {
     }
     return list;
 }
-} // Make sure this last brace is here to close the class!
+} 
 
 

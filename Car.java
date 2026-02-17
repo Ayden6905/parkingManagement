@@ -11,7 +11,7 @@ public class Car extends Vehicle {
     public Car(String licensePlate, double outstandingFines) {
         super(licensePlate, VehicleType.CAR, outstandingFines);
     }
-    // This is optional if your parent class already has getVehicleType
+    
     @Override
     public VehicleType getVehicleType() {
         return VehicleType.CAR;

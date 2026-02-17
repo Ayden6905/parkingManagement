@@ -33,7 +33,7 @@ public class EntryPanel extends JPanel {
         gbc.insets = new Insets(10, 10, 10, 10);
         gbc.fill = GridBagConstraints.HORIZONTAL;
 
-        // --- UI ---
+        // UI
         JLabel title = new JLabel("Vehicle Entry System");
         title.setFont(new Font("SansSerif", Font.BOLD, 20));
 
@@ -55,7 +55,7 @@ public class EntryPanel extends JPanel {
         lblDebtWarning.setForeground(Color.RED);
         lblDebtWarning.setFont(new Font("SansSerif", Font.BOLD, 12));
 
-        // --- Layout ---
+        // LAYOUT
         gbc.gridx = 0; gbc.gridy = 0; gbc.gridwidth = 2;
         add(title, gbc);
 
@@ -85,7 +85,7 @@ public class EntryPanel extends JPanel {
         gbc.gridy = 7;
         add(lblDebtWarning, gbc);
 
-        // --- Actions ---
+        // Actions
         btnBack.addActionListener(e -> mainFrame.showHome());
         btnReserve.addActionListener(e -> mainFrame.showReservation());
 
@@ -99,7 +99,7 @@ public class EntryPanel extends JPanel {
                 return;
             }
 
-            // --- Debt check ---
+            // Debt check 
             double existingDebt = facade.checkExistingDebt(plate);
             if (existingDebt > 0) {
                 int choice = JOptionPane.showConfirmDialog(
@@ -109,7 +109,7 @@ public class EntryPanel extends JPanel {
                         "Outstanding Debt Found",
                         JOptionPane.YES_NO_OPTION,
                         JOptionPane.WARNING_MESSAGE
-                );
+                );//stop
                 if (choice != JOptionPane.YES_OPTION) return;
                 lblDebtWarning.setText("⚠️ UNPAID FINES: RM " + String.format("%.2f", existingDebt));
             } else {
@@ -118,11 +118,11 @@ public class EntryPanel extends JPanel {
 
             String selectedSpotId = null;
 
-            // --- Step 1: Check for Reservations ---
+            // Check for Reservation
             List<String> reservedIds = facade.getReservedSpotsForPlate(plate); 
 
             if (reservedIds != null && !reservedIds.isEmpty()) {
-                selectedSpotId = (String) JOptionPane.showInputDialog(
+                selectedSpotId = (String) JOptionPane.showInputDialog( //for multiple reservations
                         this,
                         "You have an active reservation.\nSelect your reserved spot:",
                         "Reserved Spot",
@@ -133,7 +133,7 @@ public class EntryPanel extends JPanel {
                 );
                 if (selectedSpotId == null) return;
             } 
-            // --- Step 2: If no reservation, find normal spots ---
+            //  If no reservation, find normal spots
             else {
                 List<String> spotIds = facade.getAvailableSpotsFor(plate, type, isCardHolder);
 
@@ -169,8 +169,7 @@ public class EntryPanel extends JPanel {
                 selectedSpotId = selected.getSpotId();
             }
 
-            // --- Step 3: Ticket issuance (Line 206 fix) ---
-            // We use 'selectedSpotId' which works for BOTH reserved and normal cars
+            //Facade to generate tocket & update db
             String ticketResult = facade.handleVehicleEntry(plate, type, selectedSpotId, isCardHolder);
 
             if (ticketResult == null || ticketResult.startsWith("Error")) {
@@ -190,23 +189,19 @@ public class EntryPanel extends JPanel {
             JOptionPane.showMessageDialog(this, new JScrollPane(textArea), "Ticket Issued", JOptionPane.PLAIN_MESSAGE);
 
             mainFrame.showHome();
-        });//  Close the ActionListener correctly
+        });
     }
 
-    // Build the correct Vehicle object for ParkingLot filtering
+    
     private Vehicle buildVehicle(String vehicleType, String plate, boolean isCardHolder) {
-        // IMPORTANT:
-        // This assumes your VehicleFactory supports createVehicle(vehicleType, plate)
-        // and returns the correct Vehicle type.
-        // If your VehicleFactory expects a different string (e.g., "SUV/Truck"), adjust here.
         Vehicle v = new VehicleFactory().createVehicle(vehicleType, plate);
         v.setHandicappedCardHolder(isCardHolder);
         return v;
     }
 
-    // Convert DB reserved spot IDs into ParkingSpot objects (so the dialog shows "(Reserved)" etc.)
+    // Convert DB reserved spot IDs into ParkingSpot objects ( dialog shows "(Reserved)")
     private List<ParkingSpot> getReservedSpotsAsObjects(String plate) {
-        List<String> reservedIds = facade.getReservedSpotsForPlate(plate); // DB-based (good)
+        List<String> reservedIds = facade.getReservedSpotsForPlate(plate);
         List<ParkingSpot> result = new ArrayList<>();
 
         if (reservedIds == null) return result;

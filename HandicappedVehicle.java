@@ -8,7 +8,6 @@ package com.mycompany.parkingmanagement;
  * @author ayden
  */
 public class HandicappedVehicle extends Vehicle {
-    // Added 'double' here 
     public HandicappedVehicle(String licensePlate, double outstandingFines) {
         super(licensePlate, VehicleType.HANDICAPPED,outstandingFines);
     }
