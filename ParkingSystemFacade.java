@@ -2,7 +2,7 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
-package com.mycompany.parkingmanagement;
+
 /**
  *
  * @author NurqistinaAtashah
@@ -86,7 +86,7 @@ public class ParkingSystemFacade {
         }
 
         // misuse fine
-        double misuseFine = 0.0;
+        double misuseFine = 50.0;
         if (chosenSpot.getSpotType() == SpotType.RESERVED) {
             boolean isReservedSpot = (chosenSpot instanceof ReservedSpot) || chosenSpot.getSpotType() == SpotType.RESERVED;
 
