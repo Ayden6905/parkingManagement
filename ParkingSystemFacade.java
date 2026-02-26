@@ -87,7 +87,7 @@ public class ParkingSystemFacade {
 
         // misuse fine
         double misuseFine = 50.0;
-        if (chosenSpot.getSpotType() == SpotType.RESERVED) {
+        //if (chosenSpot.getSpotType() == SpotType.RESERVED) {
             boolean isReservedSpot = (chosenSpot instanceof ReservedSpot) || chosenSpot.getSpotType() == SpotType.RESERVED;
 
             if (isReservedSpot) {
@@ -103,7 +103,7 @@ public class ParkingSystemFacade {
                     existingDebt += misuseFine;
                 }
             }
-        } 
+        //} 
 
         // 5) CREATE TICKET
         ticketService.createTicket(

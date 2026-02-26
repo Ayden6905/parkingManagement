@@ -160,7 +160,7 @@ public class EntryPanel extends JPanel {
             String selectedSpotId = null;
 
             // Check for Reservation
-            List<String> reservedIds = facade.getReservedSpotsForPlate(plate); 
+            reservedIds = facade.getReservedSpotsForPlate(plate); 
 
             if (reservedIds != null && !reservedIds.isEmpty()) {
                 selectedSpotId = (String) JOptionPane.showInputDialog( //for multiple reservations
