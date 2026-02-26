@@ -2,13 +2,12 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
-
+package com.mycompany.parkingmanagement;
 /**
  *
  * @author ayden
  */
 public class HandicappedVehicle extends Vehicle {
-    // Added 'double' here 
     public HandicappedVehicle(String licensePlate, double outstandingFines) {
         super(licensePlate, VehicleType.HANDICAPPED,outstandingFines);
     }

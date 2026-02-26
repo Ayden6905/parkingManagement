@@ -2,7 +2,7 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
-
+package com.mycompany.parkingmanagement;
 /**
  *
  * @author HP
@@ -12,10 +12,6 @@ import java.awt.*;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
-
-/**
- * Panel to handle user reservations for specific parking spots.
- */
 
 public class ReservationPanel extends JPanel {   
     private ParkingSystemFacade facade;
@@ -34,11 +30,11 @@ public class ReservationPanel extends JPanel {
         gbc.insets = new Insets(10, 10, 10, 10);
         gbc.fill = GridBagConstraints.HORIZONTAL;
 
-        // --- Title ---
+        //Title
         JLabel title = new JLabel("Reserve Parking Spot");
         title.setFont(new Font("SansSerif", Font.BOLD, 18));
 
-        // --- Input Fields ---
+        // Input Fields
         plateField = new JTextField(15);
         spotDropdown = new JComboBox<>();
         refreshAvailableReservedSpots(); 
@@ -47,11 +43,11 @@ public class ReservationPanel extends JPanel {
         JSpinner hoursSpinner = new JSpinner(hoursModel);
         msg = new JLabel(" "); 
 
-        // --- Buttons ---
+        //Buttons
         JButton btnCreate = new JButton("Create Reservation");
         JButton btnBack = new JButton("Back");
 
-        // --- Layout Mapping ---
+        //Layout Mapping
         gbc.gridx = 0; gbc.gridy = 0; gbc.gridwidth = 2; 
         add(title, gbc);
         
@@ -71,12 +67,11 @@ public class ReservationPanel extends JPanel {
         gbc.gridx = 0; gbc.gridy = 5; gbc.gridwidth = 2; 
         add(msg, gbc);
         
-        // --- Listeners ---
+       
         btnBack.addActionListener(e -> mainFrame.showHome());
 
         btnCreate.addActionListener(e -> {
             String plate = plateField.getText().trim();
-            // FIX 1: Correctly grab the object from the dropdown
             Object selectedItem = spotDropdown.getSelectedItem();
 
             // Validation
@@ -86,7 +81,6 @@ public class ReservationPanel extends JPanel {
                 return;
             }
 
-            // FIX 2: Extract the actual ID from "F1-R2-S1 (Reserved)"
             String fullText = selectedItem.toString();
             String actualId = fullText.split(" ")[0]; 
 
@@ -97,7 +91,6 @@ public class ReservationPanel extends JPanel {
             LocalDateTime end = start.plusHours(hours);
             String resId = "R-" + plate + "-" + System.currentTimeMillis();
 
-            // Create object
             Reservation r = new Reservation(
                     resId, plate, (ReservedSpot) spot, start, end, ReservationStatus.ACTIVE
             );
@@ -122,7 +115,6 @@ public class ReservationPanel extends JPanel {
     public void refreshAvailableReservedSpots() {
         spotDropdown.removeAllItems();
         
-        // This leverages the toString() we added to ParkingSpot earlier
         List<String> availableReserved = ParkingLot.getInstance().getSpots().values().stream()
             .filter(s -> s instanceof ReservedSpot)
             .filter(s -> s.getStatus() == SpotStatus.AVAILABLE)

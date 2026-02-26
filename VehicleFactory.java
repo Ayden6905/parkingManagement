@@ -2,7 +2,7 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
-
+package com.mycompany.parkingmanagement;
 /**
  *
  * @author User
@@ -28,6 +28,6 @@ public class VehicleFactory {
                 v = new Car(plate, debt);
                 break;
         }
-        return v; // MUST have this line!
+        return v;
     }
 }

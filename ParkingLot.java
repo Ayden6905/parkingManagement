@@ -2,7 +2,7 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
-
+package com.mycompany.parkingmanagement;
 /**
  *
  * @author NurqistinaAtashah
@@ -11,10 +11,7 @@
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+
 
 public class ParkingLot {
     private String parkingLotId;
@@ -48,8 +45,7 @@ public class ParkingLot {
         this.reservations = new ArrayList<>();
         addDefaultFloors(numberOfFloors);
     }
-    
-    // ADDED: The missing method for your ReservationPanel
+
     public void addReservation(Reservation r) {
         if (r != null) {
             this.reservations.add(r);
@@ -88,9 +84,9 @@ public class ParkingLot {
    private ParkingSpot createSpotByRow(String spotId, int floorNumber, int row) {
     switch (row) {
         case 1:
-            return new CompactSpot(spotId, floorNumber); // Row 1 is Compact in your DB
+            return new CompactSpot(spotId, floorNumber);
         case 2:
-            return new ReservedSpot(spotId, floorNumber); // Row 2 is Reserved in your DB
+            return new ReservedSpot(spotId, floorNumber); 
         case 3:
             return new HandicappedSpot(spotId, floorNumber);
         case 4:
@@ -102,49 +98,33 @@ public class ParkingLot {
     }
 }                
     
-    //find the reservation
-    private Reservation findValidReservationFor(Vehicle v, ParkingSpot spot, LocalDateTime now)
-    {
-        for (Reservation r : reservations)
-        {
-            if (r.getLicensePlate().equals(v.getLicensePlate())
-                && r.isValid(now) && r.matchesSpot(spot))
-                        {
-                            return r;
-                        }
-        }
-        return null;
-    }
+    
     
      
 public Receipt exitVehicle(String licensePlate) {
-    // 1. Find the active ticket
+    //Find active ticket
     Ticket t = Ticket.findActiveByPlate(licensePlate);
 
     if (t == null) return null; 
 
-    // 2. Identify the spot and release it in memory
-    // This makes the spot available for the next car immediately in the UI
-    ParkingSpot spot = t.getSpot();
+    // Identify the spot and release iti n memory
+        ParkingSpot spot = t.getSpot();
     if (spot != null) {
         spot.setStatus(SpotStatus.AVAILABLE);
-        
-        // 3. Release the spot in the Database
-        // This ensures the AdminPanel 'Refresh' shows the correct count
         ParkingRepository repo = new ParkingRepository();
         repo.releaseSpot(spot.getSpotId());
     }
 
     // Existing logic
     LocalDateTime exitTime = LocalDateTime.now();
-    double parkingFee = 0.0; // You can add your calculation logic here later
+    double parkingFee = 0.0; 
     double fineAmount = 0.0;
     double totalPaid = 0.0;
     String paymentMethod = "N/A";
 
     t.closeTicket(exitTime, parkingFee, fineAmount, totalPaid, paymentMethod);
 
-    // 4. Create receipt
+    // Create receipt
     return new Receipt(t, parkingFee, fineAmount, totalPaid, t.getPaymentMethod());
 }
 
@@ -162,7 +142,6 @@ public Receipt exitVehicle(String licensePlate) {
     
     public java.util.Map<String, ParkingSpot> getSpots() {
     java.util.Map<String, ParkingSpot> allSpotsMap = new java.util.HashMap<>();
-    // This iterates through the floors you built in the constructor
     for (Floor floor : floors) { 
         for (ParkingSpot spot : floor.getAllSpots()) {
             allSpotsMap.put(spot.getSpotId(), spot);
@@ -177,10 +156,9 @@ public Receipt exitVehicle(String licensePlate) {
     
     for (Floor f : floors) {
         total += f.getAllSpots().size();
-        // Uses your existing Floor method to count occupied spots
+        // Uses existing Floor method to count occupied spots
         occupied += f.getOccupiedSpots().size(); 
     }
-    // Returns a decimal (e.g., 0.15 for 15% occupancy)
     return total == 0 ? 0.0 : ((double) occupied / total);
 }
     
@@ -188,32 +166,26 @@ public Receipt exitVehicle(String licensePlate) {
     {
     }
     
-    // Update the method signature to accept 'scheme'
-// Update the method to include the scheme
 public Ticket parkVehicle(Vehicle v, ParkingSpot s, String scheme) { 
     if (v == null || s == null) return null;
     
-    // 1. Check availability
+    // Check availability
     if (!s.isAvailable()) return null;
     if (!s.canParkVehicle(v)) return null;
     
-    // 2. NEW: Fetch the vehicle's outstanding debt from the database
-    // This ensures the ticket knows if the user owes money from a previous visit
     double existingDebt = 0.0;
-    FineManager fm = new FineManager(); // Or use a shared instance if available
+    FineManager fm = new FineManager(); 
     existingDebt = fm.getOutstandingFineByPlate(v.getLicensePlate());
+    s.parkVehicle(v); //Mark occupied
     
-    // 3. Mark the spot as occupied
-    s.parkVehicle(v);
-    
-    // 4. FIX: Provide all 6 arguments to the Ticket constructor
+    // Create a new ticket with a unique timestamp-based ID
     return new Ticket(
             "T-" + v.getLicensePlate() + "-" + System.currentTimeMillis(),
             v, 
             s, 
             LocalDateTime.now(),
-            scheme,       // Argument 5
-            existingDebt  // Argument 6: The Carried-Over Fine
+            scheme,       
+            existingDebt  
     );
 }
     public List<ParkingSpot> getAllSpots() {
@@ -222,66 +194,24 @@ public Ticket parkVehicle(Vehicle v, ParkingSpot s, String scheme) {
     }
     
     
-    private boolean hasAnyActiveReservationForPlate(String plate, LocalDateTime now) {
-
-        if (plate == null) {
-            return false;
-        }
-
-        plate = plate.trim();
-        if (plate.isEmpty()) {
-            return false;
-        }
-
-        for (Reservation r : reservations) {
-
-            if (r.getLicensePlate().equalsIgnoreCase(plate)
-                    && r.getStatus() == ReservationStatus.ACTIVE
-                    && !now.isBefore(r.getStartTime())
-                    && !now.isAfter(r.getEndTime())) {
-
-                return true;
-            }
-        }
-        return false;
-    }
-    
     public List<ParkingSpot> getAvailableSpots(Vehicle v, String plate) {
         List<ParkingSpot> result = new ArrayList<>();
 
-        // 1) Check if this plate currently has an ACTIVE reservation
+        //Check plate currently has an ACTIVE reservation
         ParkingRepository repo = new ParkingRepository();
         List<String> reservedIds = repo.getReservedSelectableSpotIds(plate);
         boolean hasReservationNow = reservedIds != null && !reservedIds.isEmpty();
 
-        // 2) Loop all spots and filter
         for (Floor floor : floors) {
             for (ParkingSpot spot : floor.getAllSpots()) {
-
                 // Hide OCCUPIED spots
                 if (!spot.isAvailable()) {
                     continue;
                 }
-
-                // Vehicle suitability (compact / regular / handicapped rules)
+                // ignore vehicle suitability 
                 if (!spot.canParkVehicle(v)) {
                     continue;
                 }
-
-//                // Reserved visibility rule
-//                if (spot.getSpotType() == SpotType.RESERVED) {
-//
-//                    // Has reservation: only show THEIR reserved spot
-//                    if (hasReservationNow) {
-//                        if (!reservedIds.contains(spot.getSpotId())) {
-//                            continue;
-//                        }
-//                    } // No reservation: hide reserved spots
-//                    else {
-//                        continue;
-//                    }
-//                }
-
                 result.add(spot);
             }
         }
@@ -308,7 +238,6 @@ public Ticket parkVehicle(Vehicle v, ParkingSpot s, String scheme) {
                     && !now.isBefore(r.getStartTime())
                     && !now.isAfter(r.getEndTime())) {
 
-                //to show if the spot is available or not
                 String spotId = r.getSpotId().getSpotId();
                 ParkingSpot spot = findSpotById(spotId);
                 if (spot != null && spot.isAvailable()) {
@@ -319,9 +248,9 @@ public Ticket parkVehicle(Vehicle v, ParkingSpot s, String scheme) {
         return result;
     }
     
-// Add this helper method to ParkingLot.java
+
 public String getFormattedSpotName(ParkingSpot spot) {
-    String type = "Regular"; // Default
+    String type = "Regular"; 
     if (spot instanceof CompactSpot) type = "Compact";
     else if (spot instanceof ReservedSpot) type = "Reserved";
     else if (spot instanceof HandicappedSpot) type = "Handicapped";
@@ -329,6 +258,8 @@ public String getFormattedSpotName(ParkingSpot spot) {
     return spot.getSpotId() + " (" + type + ")";
 }
 
+
+//to see spots based on vehicleType
 public List<ParkingSpot> getAvailableAndReservedSpots(Vehicle v, String plate) {
     List<ParkingSpot> compatibleSpots = new ArrayList<>();
     
@@ -341,7 +272,7 @@ public List<ParkingSpot> getAvailableAndReservedSpots(Vehicle v, String plate) {
             // 2. Logic: Who can see this spot?
             boolean showSpot = false;
 
-            // Rule A: Reserved spots are now open to everyone (but subject to fines later)
+            // Rule A: Reserved spots open to everyone 
             if (s instanceof ReservedSpot) {
                 showSpot = true; 
             }

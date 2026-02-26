@@ -2,7 +2,7 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
-
+package com.mycompany.parkingmanagement;
 /**
  *
  * @author HP
@@ -57,7 +57,6 @@ public abstract class Vehicle {
         this.exitTime = exitTime;
     }
 
-    // This is used by the Facade to update the object before saving to DB
     public void setOutstandingFines(double amount) {
         this.outstandingFines = amount;
     }
@@ -68,7 +67,6 @@ public abstract class Vehicle {
         }
     }        
     
-    //newly added
     public boolean isHandicappedCardHolder()
     {
         return handicappedCardHolder;

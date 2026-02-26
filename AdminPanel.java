@@ -2,7 +2,7 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
-
+package com.mycompany.parkingmanagement;
 /**
  *
  * @author NurqistinaAtashah
@@ -28,7 +28,7 @@ public class AdminPanel extends JPanel {
 
         setLayout(new BorderLayout());
 
-        // 1. Top Navigation Bar
+        // Top Navigation Bar
         JPanel navBar = new JPanel(new BorderLayout());
         navBar.setBackground(new Color(45, 45, 45));
         JButton btnBack = new JButton("Logout/Back");
@@ -40,28 +40,27 @@ public class AdminPanel extends JPanel {
         navBar.add(lblTitle, BorderLayout.CENTER);
         add(navBar, BorderLayout.NORTH);
 
-        // 2. Create Tabbed Pane
+        // Tabs
         tabbedPane = new JTabbedPane();
-        
         tabbedPane.addTab("Occupancy Monitoring", createOccupancyPanel());
         tabbedPane.addTab("Revenue Summary", createRevenuePanel());
         tabbedPane.addTab("Fine Overview", createFineOverviewPanel());
 
         add(tabbedPane, BorderLayout.CENTER);
 
-        // Actions
+       //logout
         btnBack.addActionListener(e -> mainFrame.showHome());
     }
 
-    // --- TAB 1: OCCUPANCY MONITORING ---
- private JPanel createOccupancyPanel() {
+    //TAB 1: OCCUPANCY MONITORING
+    private JPanel createOccupancyPanel() {
     JPanel panel = new JPanel(new GridBagLayout());
     panel.setBackground(new Color(240, 240, 240)); 
     GridBagConstraints gbc = new GridBagConstraints();
     gbc.insets = new Insets(10, 10, 10, 10);
     gbc.fill = GridBagConstraints.HORIZONTAL;
 
-    // Initialize labels for counts
+    // Initialize labels for counting
     level1Count = createCountLabel();
     level2Count = createCountLabel();
     level3Count = createCountLabel();
@@ -78,7 +77,7 @@ public class AdminPanel extends JPanel {
     lblOccupancyRate.setBackground(Color.LIGHT_GRAY);
     lblOccupancyRate.setPreferredSize(new Dimension(80, 30));
     
-    // Adding Levels 1-5
+    // loop generate buttons for floor
     for (int i = 1; i <= 5; i++) {
         final int floorNum = i; 
         JButton btnLevel = new JButton("Level " + floorNum);
@@ -98,14 +97,14 @@ public class AdminPanel extends JPanel {
         else if (i == 5) panel.add(level5Count, gbc);
     }
     
-    // Total Available Section
+    // Total Available 
     gbc.gridy = 6;
     gbc.gridx = 0;
     panel.add(new JLabel("Total Available Parking:"), gbc);
     gbc.gridx = 1;
     panel.add(lblTotalAvailable, gbc);
     
-    // NEW: Occupancy Rate Section (GridY 7)
+    // Occupancy Rate 
     gbc.gridy = 7;
     gbc.gridx = 0;
     panel.add(new JLabel("Occupancy Rate:"), gbc);
@@ -115,13 +114,12 @@ public class AdminPanel extends JPanel {
     
     gbc.gridy = 8;
     gbc.gridx = 0;
-    gbc.gridwidth = 2; // Span across both columns
+    gbc.gridwidth = 2; 
     JButton btnRefresh = new JButton("🔄 Refresh Data");
-    btnRefresh.setBackground(new Color(70, 130, 180)); // Steel Blue
+    btnRefresh.setBackground(new Color(70, 130, 180)); //Blue
     btnRefresh.setForeground(Color.WHITE);
     btnRefresh.setFont(new Font("SansSerif", Font.BOLD, 12));
     
-    // Action: Just call the update method
     btnRefresh.addActionListener(e -> {
         updateOccupancyDisplay();
         JOptionPane.showMessageDialog(this, "Occupancy Data Updated!");
@@ -134,37 +132,8 @@ public class AdminPanel extends JPanel {
     return panel;
 }
 
-// Helper method to keep the gray boxes consistent
-private JLabel createCountLabel() {
-    JLabel label = new JLabel("0", SwingConstants.CENTER);
-    label.setOpaque(true);
-    label.setBackground(Color.LIGHT_GRAY);
-    label.setPreferredSize(new Dimension(80, 30));
-    label.setBorder(BorderFactory.createLineBorder(Color.GRAY));
-    return label;
-}
-
-  private void showFloorDetails(int floor) {
-    // This calls the facade to get: SpotID, Type, Status, LicensePlate, EntryTime
-    List<Object[]> floorData = facade.getOccupancyDetailsByFloor(floor);
-
-    String[] columns = {"Spot ID", "Spot Type", "Status", "Vehicle No", "Entry Time"};
-    Object[][] data = new Object[floorData.size()][5];
-    
-    for (int i = 0; i < floorData.size(); i++) {
-        data[i] = floorData.get(i);
-    }
-
-    JTable table = new JTable(data, columns);
-    JScrollPane scrollPane = new JScrollPane(table);
-    scrollPane.setPreferredSize(new Dimension(600, 400));
-
-    JOptionPane.showMessageDialog(this, scrollPane, "Level " + floor + " Details", JOptionPane.PLAIN_MESSAGE);
-}
-  
-  
-   // --- TAB 2: REVENUE SUMMARY ---
-private JPanel createRevenuePanel() {
+    //  TAB 2: REVENUE SUMMARY
+    private JPanel createRevenuePanel() {
     JPanel panel = new JPanel(new GridBagLayout());
     panel.setBackground(new Color(245, 245, 245));
     GridBagConstraints gbc = new GridBagConstraints();
@@ -181,6 +150,7 @@ private JPanel createRevenuePanel() {
     btnFineReport.setFont(new Font("SansSerif", Font.BOLD, 13));
     btnFineReport.addActionListener(e -> showFineStrategyReport());
 
+    
     gbc.gridy = 0;
     panel.add(btnGeneralReport, gbc);
     
@@ -189,62 +159,67 @@ private JPanel createRevenuePanel() {
 
     return panel;
 }
-
-private void showFineStrategyReport() {
-    // 1. Get Data from Facade
-    List<Object[]> fineStats = facade.getFineRevenueReport();
-    List<Object[]> topViolators = facade.getTopFineViolators();
-
-    if (fineStats.isEmpty()) {
-        JOptionPane.showMessageDialog(this, "No fine records found yet.");
-        return;
-    }
-
-    // 2. Setup the Strategy Breakdown Table
+    
+    private void showFineStrategyReport() {
+    //Table Model for Strategy Revenue 
     String[] statCols = {"Fine Scheme", "Vehicles Fined", "Total Fine Revenue (RM)", "Avg. Fine (RM)"};
     DefaultTableModel statModel = new DefaultTableModel(statCols, 0);
-    for (Object[] row : fineStats) statModel.addRow(row);
+
+    // Def Refresh Logic to pull real-time strategy stats
+    Runnable refreshAction = () -> {
+        List<Object[]> fineStats = facade.getFineRevenueReport();
+        statModel.setRowCount(0);
+        for (Object[] row : fineStats) {
+            statModel.addRow(row);
+        }
+    };
+
+    // Initial data load
+    refreshAction.run();
+
+    //UI Components
     JTable statTable = new JTable(statModel);
+    JButton btnRefresh = new JButton("🔄 Refresh Data");
+    
+    btnRefresh.addActionListener(e -> {
+        refreshAction.run();
+        JOptionPane.showMessageDialog(null, "Revenue Statistics Updated!");
+    });
 
-    // 3. Setup the Top Violators Table
-    String[] violatorCols = {"Plate Number", "Scheme Used", "Total Duration", "Fine Amount (RM)"};
-    DefaultTableModel violatorModel = new DefaultTableModel(violatorCols, 0);
-    for (Object[] row : topViolators) violatorModel.addRow(row);
-    JTable violatorTable = new JTable(violatorModel);
-
-    // 4. NEW: Strategy Legend (Explaining Progressive vs Others)
+   
+    JPanel container = new JPanel();
+    container.setLayout(new BorderLayout(10, 10));
+    container.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+    
+    JPanel header = new JPanel(new BorderLayout());
+    JLabel lblTitle = new JLabel("💰 REVENUE BY FINE STRATEGY");
+    lblTitle.setFont(new Font("SansSerif", Font.BOLD, 12));
+    header.add(lblTitle, BorderLayout.WEST);
+    header.add(btnRefresh, BorderLayout.EAST);
+    
+    container.add(header, BorderLayout.NORTH);
+    container.add(new JScrollPane(statTable), BorderLayout.CENTER);
+    
+    // FIne Strategy  for Admin reference
     JPanel legendPanel = new JPanel(new GridLayout(3, 1));
-    legendPanel.setBorder(BorderFactory.createTitledBorder("Strategy Logic Applied:"));
+    legendPanel.setBorder(BorderFactory.createTitledBorder("Strategy Rules"));
     legendPanel.add(new JLabel(" • Fixed: Flat RM 50.00"));
     legendPanel.add(new JLabel(" • Hourly: RM 10.00 per hour overstayed"));
     legendPanel.add(new JLabel(" • Progressive: RM 10 (1st hr) -> RM 20 (2nd hr) -> RM 40 (3rd hr+)"));
+    container.add(legendPanel, BorderLayout.SOUTH);
 
-    // 5. Layout for the Popup
-    JPanel container = new JPanel();
-    container.setLayout(new BoxLayout(container, BoxLayout.Y_AXIS));
-    
-    // Add sections with padding
-    container.add(new JLabel("💰 REVENUE BY FINE STRATEGY"));
-    container.add(new JScrollPane(statTable));
-    container.add(Box.createRigidArea(new Dimension(0, 15)));
-    
-    container.add(new JLabel("🚩 TOP 5 HIGHEST FINES ISSUED"));
-    container.add(new JScrollPane(violatorTable));
-    container.add(Box.createRigidArea(new Dimension(0, 15)));
-    
-    container.add(legendPanel);
-
-    container.setPreferredSize(new Dimension(650, 550));
+    // Display  dialog
+    container.setPreferredSize(new Dimension(650, 400));
     JOptionPane.showMessageDialog(this, container, "Fine Strategy Analytics", JOptionPane.PLAIN_MESSAGE);
 }
-
-
-    // --- TAB 4: FINE OVERVIEW & CONFIG ---
+    
+    
+       //TAB 4: FINE OVERVIEW & CONFIG
 private JPanel createFineOverviewPanel() {
     JPanel mainContainer = new JPanel(new BorderLayout(10, 10));
     mainContainer.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
-    // --- 1. TOP SECTION: Strategy Config & Rules ---
+    // FIne Strategy Config & Rules
     JPanel topSection = new JPanel();
     topSection.setLayout(new BoxLayout(topSection, BoxLayout.Y_AXIS));
 
@@ -257,7 +232,8 @@ private JPanel createFineOverviewPanel() {
     schemeCombo.setSelectedItem(facade.getCurrentFineScheme());
     JButton btnUpdate = new JButton("Apply Scheme");
     JButton btnRefresh = new JButton("Refresh All Tables");
-
+ 
+    
     configRow.add(new JLabel("Active Strategy: "));
     configRow.add(schemeCombo);
     configRow.add(btnUpdate);
@@ -272,7 +248,7 @@ private JPanel createFineOverviewPanel() {
     topSection.add(new JScrollPane(txtRules));
     mainContainer.add(topSection, BorderLayout.NORTH);
 
-    // --- 2. CENTER SECTION: The Two Tables ---
+    
     JPanel tablesPanel = new JPanel(new GridLayout(2, 1, 10, 10));
 
     // Table 1: Active Fines
@@ -293,47 +269,45 @@ private JPanel createFineOverviewPanel() {
     tablesPanel.add(debtPanel);
     mainContainer.add(tablesPanel, BorderLayout.CENTER);
 
-    // --- 3. Action Listeners ---
     btnUpdate.addActionListener(e -> {
         String selected = (String) schemeCombo.getSelectedItem();
         if(facade.changeSystemFineSchemeDb(selected)) {
             JOptionPane.showMessageDialog(this, "Rules updated to " + selected);
-            // Refresh data here if needed
-        }        
+            }        
     });
 
+    
     btnRefresh.addActionListener(e -> {
-        // Method to call facade and update both activeModel and debtModel
-        refreshBothTables(activeModel, debtModel);
-    });
-
+    refreshBothTables(activeModel, debtModel); 
+    System.out.println("DEBUG: Refreshed Active Table. Rows: " + activeModel.getRowCount());
+    
+    if (activeModel.getRowCount() == 0 && debtModel.getRowCount() == 0) {
+        JOptionPane.showMessageDialog(this, "Refresh complete, but no fine data found in database.");
+    }
+});
     return mainContainer;
 }
 
-
-public void updateOccupancyDisplay() {
+    public void updateOccupancyDisplay() {
     if (facade == null || level1Count == null) return;
 
-    // 1. Fetch real-time available counts from the facade
+    //Fetch real-time available counts from the facade
     int f1 = facade.getAvailableSpotsByFloor(1);
     int f2 = facade.getAvailableSpotsByFloor(2);
     int f3 = facade.getAvailableSpotsByFloor(3);
     int f4 = facade.getAvailableSpotsByFloor(4);
     int f5 = facade.getAvailableSpotsByFloor(5);
 
-    // 2. Update the Level UI labels (the gray boxes)
+    //Update 
     level1Count.setText(String.valueOf(f1)); 
     level2Count.setText(String.valueOf(f2));
     level3Count.setText(String.valueOf(f3));
     level4Count.setText(String.valueOf(f4));
     level5Count.setText(String.valueOf(f5));
 
-    // 3. Calculate Global Statistics
+    //Calc Global Statistics
     int totalAvailable = f1 + f2 + f3 + f4 + f5;
-    
-    // FIX: Match this to your actual total spots (e.g., 250)
-    int totalCapacity = 250; 
-    
+    int totalCapacity = 250;    
     int totalOccupied = totalCapacity - totalAvailable;
 
     lblTotalAvailable.setText(String.valueOf(totalAvailable));
@@ -341,81 +315,108 @@ public void updateOccupancyDisplay() {
     // Calculate Rate: (Occupied / Total) * 100
     double occupancyRate = (double) totalOccupied / totalCapacity;
     
-    // This will now show 4.4% instead of -19.5%
     lblOccupancyRate.setText(String.format("%.1f%%", occupancyRate * 100));
 
-    // Visual feedback logic
+    // change colour depends on how full the lot is 
     if (occupancyRate > 0.9) {
         lblOccupancyRate.setBackground(new Color(255, 102, 102)); // Red
     } else {
         lblOccupancyRate.setBackground(new Color(144, 238, 144)); // Green
     }
 }
-
-
-     private void showRevenueReport() {
-        List<RevenueRecord> records = facade.getRevenueReport();
-
-        if (records.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "No revenue records found.");
-            return;
-        }
-
-        String[] columns = {
-                "License Plate",
-                "Entry Time",
-                "Exit Time",
-                "Total Paid (RM)",
-                "Payment Method",
-                "Receipt Time"
-        };
-
-        Object[][] data = new Object[records.size()][6];
-
-        double totalRevenue = 0;
-
-        for (int i = 0; i < records.size(); i++) {
-            RevenueRecord r = records.get(i);
-
-            data[i][0] = r.getLicensePlate();
-            data[i][1] = r.getEntryTime();
-            data[i][2] = r.getExitTime();
-            data[i][3] = r.getTotalPaid();
-            data[i][4] = r.getPaymentMethod();
-            data[i][5] = r.getReceiptTime();
-
-            totalRevenue += r.getTotalPaid();
-        }
-
-        JTable table = new JTable(data, columns);
-        JScrollPane scrollPane = new JScrollPane(table);
-
-        JPanel panel = new JPanel(new BorderLayout());
-        panel.add(scrollPane, BorderLayout.CENTER);
-
-        JLabel totalLabel = new JLabel(String.format("Total Revenue: RM %.2f", totalRevenue));
-        totalLabel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-        panel.add(totalLabel, BorderLayout.SOUTH);
-
-        JOptionPane.showMessageDialog(this, panel,
-                "Revenue Report", JOptionPane.PLAIN_MESSAGE);
-    }
+    
      
-    // Inside AdminPanel.java
-private void refreshBothTables(DefaultTableModel activeModel, DefaultTableModel debtModel) {
+    
+// Helper method 
+private JLabel createCountLabel() {
+    JLabel label = new JLabel("0", SwingConstants.CENTER);
+    label.setOpaque(true);
+    label.setBackground(Color.LIGHT_GRAY);
+    label.setPreferredSize(new Dimension(80, 30));
+    label.setBorder(BorderFactory.createLineBorder(Color.GRAY));
+    return label;
+}
+
+// Pop up a table showing every car on a specific floor
+  private void showFloorDetails(int floor) {
+   List<Object[]> floorData = facade.getOccupancyDetailsByFloor(floor);
+
+    String[] columns = {"Spot ID", "Spot Type", "Status", "Vehicle No", "Entry Time"};
+    Object[][] data = new Object[floorData.size()][5];
+    
+    for (int i = 0; i < floorData.size(); i++) {
+        data[i] = floorData.get(i);
+    }
+
+    JTable table = new JTable(data, columns);
+    JScrollPane scrollPane = new JScrollPane(table);
+    scrollPane.setPreferredSize(new Dimension(600, 400));
+
+    JOptionPane.showMessageDialog(this, scrollPane, "Level " + floor + " Details", JOptionPane.PLAIN_MESSAGE);
+}
+  
+  
+
+   // GENERAL REVENUE LOGIC (Fees + Fines)
+    private void showRevenueReport() {
+    List<Ticket> records = facade.getRevenueReport();
+    
+    if (records.isEmpty()) {
+        JOptionPane.showMessageDialog(this, "No revenue records found.");
+        return;
+    }
+
+    String[] columns = {
+            "Plate", "Start Time", "End Time", 
+            "Parking Fee (RM)", "Fine (RM)", "Total (RM)", "Method"
+    };
+
+    Object[][] data = new Object[records.size()][7];
+    double totalRevenue = 0;
+
+    for (int i = 0; i < records.size(); i++) {
+        Ticket t = records.get(i);
+
+        data[i][0] = t.getLicensePlate();
+        data[i][1] = t.getEntryTime();
+        data[i][2] = t.getExitTime();
+        data[i][3] = String.format("%.2f", t.getParkingFee());
+        data[i][4] = String.format("%.2f", t.getFineAmount());
+        data[i][5] = String.format("%.2f", t.getTotalPaid());
+        data[i][6] = t.getPaymentMethod();
+
+        totalRevenue += t.getTotalPaid();
+    }
+
+    JTable table = new JTable(data, columns);
+    JScrollPane scrollPane = new JScrollPane(table);
+    JPanel panel = new JPanel(new BorderLayout());
+    panel.add(scrollPane, BorderLayout.CENTER);
+
+    JLabel totalLabel = new JLabel(String.format("GRAND TOTAL REVENUE: RM %.2f", totalRevenue), SwingConstants.RIGHT);
+    totalLabel.setFont(new Font("SansSerif", Font.BOLD, 14));
+    totalLabel.setForeground(new Color(0, 102, 51));
+    totalLabel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+    panel.add(totalLabel, BorderLayout.SOUTH);
+
+    panel.setPreferredSize(new Dimension(800, 500));
+    JOptionPane.showMessageDialog(this, panel, "General Revenue Report", JOptionPane.PLAIN_MESSAGE);
+}
+    
+  
+     
+   private void refreshBothTables(DefaultTableModel activeModel, DefaultTableModel debtModel) {
     activeModel.setRowCount(0);
     debtModel.setRowCount(0);
 
-    // Fills Active Fines (6 columns: Plate, Type, Spot, Time, Scheme, Fine)
+    // Active Fines (6 columns: Plate, Type, Spot, Time, Scheme, Fine)
     for (Object[] row : facade.getActiveFinesReport()) {
         activeModel.addRow(row);
     }
 
-    // Fills Past Debt (4 columns: Plate, Type, Last Scheme, Total Debt)
+    // Past Debt (4 columns: Plate, Type, Last Scheme, Total Debt)
     for (Object[] row : facade.getPastDebtReport()) {
         debtModel.addRow(row);
     }
+  }
 }
-     
-     
-   }
