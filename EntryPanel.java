@@ -115,52 +115,11 @@ public class EntryPanel extends JPanel {
             } else {
                 lblDebtWarning.setText("");
             }
-            
-            //FIRST: if this plate has an ACTIVE reservation, show ONLY reserved spot id
-            List<String> reservedIds = facade.getReservedSpotsForPlate(plate); // DB-based (active only)
-
-            if (reservedIds != null && !reservedIds.isEmpty()) {
-                
-                String chosenReservedId = (String) JOptionPane.showInputDialog(
-                        this,
-                        "You have an active reservation.\nSelect your reserved spot:",
-                        "Reserved Spot",
-                        JOptionPane.PLAIN_MESSAGE,
-                        null,
-                        reservedIds.toArray(new String[0]),
-                        reservedIds.get(0)
-                );
-
-                if (chosenReservedId == null) {
-                    return;
-                }                                
-               
-                String ticketResult = facade.handleVehicleEntry(plate, type, chosenReservedId, isCardHolder);
-
-                if (ticketResult == null || ticketResult.startsWith("Error")) {
-                    JOptionPane.showMessageDialog(this,
-                            ticketResult == null ? "Unknown error." : ticketResult,
-                            "Entry Error",
-                            JOptionPane.ERROR_MESSAGE);
-                    return;
-                }
-                
-                plateField.setText("");
-                handicappedCheck.setSelected(false);
-
-                JTextArea textArea = new JTextArea(ticketResult);
-                textArea.setEditable(false);
-                JOptionPane.showMessageDialog(this, new JScrollPane(textArea), "Ticket Issued", JOptionPane.PLAIN_MESSAGE);
-
-                mainFrame.showHome();
-                return; //
-            }
-
 
             String selectedSpotId = null;
 
             // Check for Reservation
-            reservedIds = facade.getReservedSpotsForPlate(plate); 
+            List<String> reservedIds = facade.getReservedSpotsForPlate(plate); 
 
             if (reservedIds != null && !reservedIds.isEmpty()) {
                 selectedSpotId = (String) JOptionPane.showInputDialog( //for multiple reservations
